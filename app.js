@@ -5,7 +5,7 @@ const fresh=()=>({players:[],settings:{courts:1,points:7,cycles:3},matches:[],st
 function valid(d){return d&&Array.isArray(d.players)&&Array.isArray(d.matches)&&d.settings&&d.players.every(p=>p&&typeof p.id=='number'&&typeof p.name=='string')&&d.matches.every(m=>m&&Array.isArray(m.a)&&Array.isArray(m.b)&&m.a.length==2&&m.b.length==2&&['pending','done','skipped'].includes(m.status))&&['courts','points','cycles'].every(k=>Number.isInteger(d.settings[k])&&d.settings[k]>0)}
 let S=fresh();try{const d=JSON.parse(localStorage.getItem(K));if(valid(d))S=d}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
-let view=S.started?'game':'home',tmp=null,msg='',err='';
+let view=S.started?'game':'home',tmp=null,msg='',err='',ed=null,ct=1,SC={};
 
 /* ---------- Algoritmo de rotación ---------- */
 const key=(x,y)=>x<y?x+'-'+y:y+'-'+x;
@@ -47,6 +47,13 @@ function rebuild(count){
   nm.forEach(m=>m.id=S.nid++);S.matches=keep.concat(nm);return true;
 }
 const pending=()=>S.matches.filter(m=>m.status==='pending');
+/* Partidos que se juegan a la vez: los primeros pendientes (hasta nº de pistas) sin jugadores repetidos. Cuando una pista queda libre, entra el siguiente. */
+function live(){
+  const C=S.settings.courts,out=[],busy=new Set(),used=new Set();
+  for(const m of pending()){if(out.length>=C)break;const ps=[...m.a,...m.b];if(ps.some(i=>busy.has(i)))continue;out.push(m);ps.forEach(i=>busy.add(i))}
+  out.forEach(m=>{if(m.court>=1&&m.court<=C&&!used.has(m.court))used.add(m.court);else m.court=0});
+  out.forEach(m=>{if(!m.court){let c=1;while(used.has(c))c++;m.court=c;used.add(c)}});
+  return out.sort((a,b)=>a.court-b.court)}
 const nameOf=id=>{const p=S.players.find(p=>p.id===id);return p?p.name:'?'};
 function stats(){
   const st={};S.players.forEach(p=>st[p.id]={p,g:0,w:0,l:0,pf:0,pa:0,pt:new Set()});
@@ -132,15 +139,17 @@ function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,t
   <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar calendario</button>
   <button class="btn ghost" data-a="home">Volver</button>`}
 function vGame(){
-  const m=tmp&&tmp.id?S.matches.find(x=>x.id===tmp.id):pending()[0];
+  const lv=live(),em=ed&&S.matches.find(x=>x.id===ed),m=em||lv.find(x=>x.court===ct)||lv[0];if(m&&!em)ct=m.court;
   if(!m)return`<div class="logo">¡FIN!</div><p class="sub">No quedan partidos pendientes.</p><button class="btn ball" data-a="final">Ver resumen final</button><button class="btn ghost" data-a="extra">Añadir otro ciclo</button><nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`;
-  if(!tmp||tmp.id!==m.id)tmp={id:m.id,a:m.sa??0,b:m.sb??0};
-  const idx=S.matches.indexOf(m)+1,nx=pending().find(x=>x!==m),tm=(t,c,l)=>`<div class="team ${c}"><div class="mut" style="color:#fff">${l}</div><div class="n">${t.map(i=>esc(nameOf(i))).join('<br>')}</div><div class="sc"><button data-sc="${c}-1" aria-label="Restar">−</button><output>${tmp[c]}</output><button data-sc="${c}1" aria-label="Sumar">+</button></div></div>`;
-  return`<div class="head"><h2>Partido ${idx}</h2><span class="chip">Ciclo ${m.cycle} · Pista ${m.court}</span></div>${bar()}
+  tmp=SC[m.id]||(SC[m.id]={id:m.id,a:m.sa??0,b:m.sb??0});
+  const idx=S.matches.indexOf(m)+1,nx=pending().find(x=>x!==m&&!lv.includes(x)),
+  ctabs=!em&&lv.length>1?`<div class="ctabs" role="tablist" aria-label="Pistas en juego">${lv.map(x=>{const t=SC[x.id];return`<button role="tab" data-ct="${x.court}" aria-selected="${x===m}"><b>Pista ${x.court}</b><small>${t&&(t.a||t.b)?t.a+' - '+t.b:'en juego'}</small></button>`}).join('')}</div>`:'',tm=(t,c,l)=>`<div class="team ${c}"><div class="mut" style="color:#fff">${l}</div><div class="n">${t.map(i=>esc(nameOf(i))).join('<br>')}</div><div class="sc"><button data-sc="${c}-1" aria-label="Restar">−</button><output>${tmp[c]}</output><button data-sc="${c}1" aria-label="Sumar">+</button></div></div>`;
+  return`${ctabs}<div class="head"><h2>Partido ${idx}</h2><span class="chip">Ciclo ${m.cycle} · Pista ${m.court}</span></div>${bar()}
   ${tm(m.a,'a','Pareja A')}<div class="vs">contra</div>${tm(m.b,'b','Pareja B')}
   <button class="btn ball" data-a="ok">${m.status==='done'?'Guardar corrección':'Confirmar resultado'}</button>
   <div class="row"><button class="btn ghost" data-a="skip">Saltar partido</button>${m.status==='done'?'<button class="btn ghost" data-a="cancel">Cancelar</button>':''}</div>
-  ${nx?`<div class="card pend"><span class="mut">Después:</span><br><b>${nx.a.map(nameOf).map(esc).join(' y ')}</b> vs <b>${nx.b.map(nameOf).map(esc).join(' y ')}</b></div>`:''}
+  ${nx?`<div class="card pend"><span class="mut">${lv.length>1?'En cola:':'Después:'}</span><br><b>${nx.a.map(nameOf).map(esc).join(' y ')}</b> vs <b>${nx.b.map(nameOf).map(esc).join(' y ')}</b></div>`:''}
+  ${!em&&nx&&lv.length<S.settings.courts?'<p class="mut">Hay una pista libre: el siguiente partido necesita a jugadores que todavía están en pista. Empezará cuando terminen.</p>':''}
   <nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`}
 function vMore(){
   const done=S.matches.filter(m=>m.status!=='pending');
@@ -246,27 +255,28 @@ const A={
     o.innerHTML='<div class="ovh"><span>Pong de PICKLE&amp;MIX</span><button class="btn sm red" data-a="closeg">Cerrar ✕</button></div><canvas id="pong2"></canvas><p id="phint2"></p>';
     document.body.appendChild(o);document.body.style.overflow='hidden';initPong('pong2','phint2')},
   closeg(){const o=$('#ov');if(o)o.remove();document.body.style.overflow=''},
-  setup(){view='setup'},home(){view='home'},go(){view='game';tmp=null},more(){view='more'},final(){view='final'},
+  setup(){view='setup'},home(){view='home'},go(){view='game';ed=null},more(){view='more'},final(){view='final'},
   start(){const c=S.settings;if(S.players.length<4){err='Necesitas al menos 4 jugadores.';return}
     if(S.players.length<4*c.courts){err=`Con ${c.courts} pistas necesitas al menos ${4*c.courts} jugadores.`;return}
-    S.players.forEach(p=>p.status='active');S.matches=[];rebuild(Math.floor(S.players.length/4)*c.cycles);S.started=true;tmp=null;view='game'},
-  extra(){rebuild(pending().length+Math.floor(active().length/4));tmp=null;view='game'},
+    S.players.forEach(p=>p.status='active');S.matches=[];rebuild(Math.floor(S.players.length/4)*c.cycles);S.started=true;SC={};ed=null;ct=1;view='game'},
+  extra(){rebuild(pending().length+Math.floor(active().length/4));ed=null;view='game'},
   ok(){const m=S.matches.find(x=>x.id===tmp.id),p=S.settings.points,{a,b}=tmp;
     if(a===b||Math.max(a,b)<p){err=`El ganador debe llegar al menos a ${p} puntos y no puede haber empate.`;return}
-    m.sa=a;m.sb=b;m.status='done';tmp=null;view='game'},
-  skip(){if(!confirm('¿Marcar este partido como no disputado?'))return;const m=S.matches.find(x=>x.id===tmp.id);m.status='skipped';m.sa=m.sb=null;tmp=null},
-  cancel(){tmp=null},
+    m.sa=a;m.sb=b;m.status='done';delete SC[m.id];ed=null;tmp=null;view='game'},
+  skip(){if(!confirm('¿Marcar este partido como no disputado?'))return;const m=S.matches.find(x=>x.id===tmp.id);m.status='skipped';m.sa=m.sb=null;delete SC[m.id];ed=null;tmp=null},
+  cancel(){if(tmp)delete SC[tmp.id];ed=null;tmp=null},
   story(){storyBlob().then(b=>{if(!b){toast('No se pudo crear la imagen.');return}const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='pickle-and-mix-resumen-stories.jpg';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Imagen descargada.')})},
   storyshare(){storyBlob().then(b=>{const f=new File([b],'pickle-and-mix-resumen-stories.jpg',{type:'image/jpeg'});navigator.share({files:[f],title:'PICKLE & MIX'}).catch(()=>{})})},
   backup(){const u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='pickle-and-mix-copia.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)},
-  reset(){if(confirm('Se borrarán jugadores, partidos y resultados. ¿Seguro?')&&confirm('Última comprobación: ¿empezar una quedada nueva?')){S=fresh();tmp=null;view='home'}}
+  reset(){if(confirm('Se borrarán jugadores, partidos y resultados. ¿Seguro?')&&confirm('Última comprobación: ¿empezar una quedada nueva?')){S=fresh();SC={};ed=null;ct=1;tmp=null;view='home'}}
 };
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-a],[data-sc],[data-del],[data-st],[data-pd],[data-edit]');if(!t)return;const d=t.dataset;
+  const t=e.target.closest('[data-a],[data-sc],[data-ct],[data-del],[data-st],[data-pd],[data-edit]');if(!t)return;const d=t.dataset;
   if(d.a)A[d.a]();
   else if(d.sc){const c=d.sc[0],v=+d.sc.slice(1);tmp[c]=Math.max(0,Math.min(99,tmp[c]+v));$('#app').innerHTML=header()+vGame();return}
+  else if(d.ct){ct=+d.ct;ed=null}
   else if(d.del)S.players=S.players.filter(p=>p.id!==+d.del);
-  else if(d.edit){tmp={id:+d.edit};tmp=null;const m=S.matches.find(x=>x.id===+d.edit);if(m.status==='skipped'){m.status='pending'}tmp={id:m.id,a:m.sa??0,b:m.sb??0};view='game'}
+  else if(d.edit){const m=S.matches.find(x=>x.id===+d.edit);if(m.status==='skipped')m.status='pending';delete SC[m.id];ed=m.id;view='game'}
   else if(d.st){const[i,s]=d.st.split('-'),p=S.players.find(x=>x.id==i);p.status=p.status===s?'active':s;replan(p.name+(p.status==='active'?' vuelve a jugar.':p.status==='rest'?' descansa.':' se marcha.'))}
   else if(d.pd){const p=S.players.find(x=>x.id==d.pd);if(!confirm(`¿Quitar a ${p.name}? Sus partidos jugados se conservan.`))return;p.status='out';p.removed=true;S.players=S.players.filter(x=>x!==p||S.matches.some(m=>m.status==='done'&&[...m.a,...m.b].includes(p.id)));replan('Jugador quitado.')}
   save();render();
@@ -276,7 +286,7 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target.datas
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.ren){const p=S.players.find(x=>x.id==t.dataset.ren);if(t.value.trim())p.name=t.value.trim().slice(0,24);save();return}
   if(t.dataset.set){const k=t.dataset.set,v=Math.max(1,Math.min(+t.max,parseInt(t.value)||1));S.settings[k]=v;save();render();return}
-  if('imp' in t.dataset){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!valid(d))throw 0;if(!confirm('Se sustituirán los datos actuales. ¿Continuar?'))return;S=d;tmp=null;save();msg='Copia recuperada.';view=S.started?'game':'home'}catch(x){err='El archivo no es una copia válida de PICKLE & MIX.'}render()};r.readAsText(t.files[0])}
+  if('imp' in t.dataset){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!valid(d))throw 0;if(!confirm('Se sustituirán los datos actuales. ¿Continuar?'))return;S=d;SC={};ed=null;ct=1;tmp=null;save();msg='Copia recuperada.';view=S.started?'game':'home'}catch(x){err='El archivo no es una copia válida de PICKLE & MIX.'}render()};r.readAsText(t.files[0])}
 });
 if(typeof document!=='undefined'&&document.getElementById('app'))render();
 if(typeof module!=='undefined')module.exports={gen,trial};

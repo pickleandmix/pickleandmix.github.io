@@ -62,3 +62,8 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .pod.gold .blk{height:132px;background:var(--ball)}.pod.silver .blk{height:98px;background:#cfd8e3}.pod.bronze .blk{height:72px;background:#f0b88c}
 
 .foot{text-align:center;margin-top:24px}.foot a{color:var(--court);font-weight:800}
+
+.ctabs{display:flex;gap:8px;margin:4px 0 12px}
+.ctabs button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;border-radius:14px;padding:8px 4px;min-height:56px;font:inherit;background:#fff;color:var(--court);box-shadow:inset 0 0 0 2px var(--court);cursor:pointer}
+.ctabs b{font-weight:800;font-size:16px}.ctabs small{font-size:13px;color:var(--mut)}
+.ctabs button[aria-selected=true]{background:var(--court);color:#fff}.ctabs button[aria-selected=true] small{color:#d4f53c;font-weight:700}
