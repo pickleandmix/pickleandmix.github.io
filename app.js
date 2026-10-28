@@ -122,7 +122,7 @@ function vHome(){const n=S.players.length,c=S.settings;
   return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub">Parejas rotatorias, cero eliminatorias, muchas risas.</p>
   <div class="card"><div class="big">${n}</div><div>jugadores inscritos</div><div class="chips" style="margin-top:12px"><span class="chip">${c.courts} pista${c.courts>1?'s':''}</span><span class="chip">a ${c.points} puntos</span><span class="chip">${c.cycles} ciclos</span></div></div>
   ${S.started?'<button class="btn ball" data-a="go">Continuar la quedada</button>':''}
-  <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button><p class="mut" style="text-align:center">Versión 7</p>`}
+  <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button><p class="mut foot">Plataforma para pickleballers creada por <a href="https://kikebarcelodg.github.io/" target="_blank" rel="noopener">Kike Barceló</a></p>`}
 function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,tot=per*c.cycles;
   return`<h2>Prepara la quedada</h2>
   <form class="card" data-f="add"><label class="mut">Añadir jugadores (uno o varios separados por comas o líneas)</label><div class="row"><input name="n" autocomplete="off" placeholder="Nombre"><button class="btn sm fix">Añadir</button></div></form>
@@ -166,10 +166,15 @@ function summary(){
   return{rows,dn,top,aw,names};
 }
 const sg=n=>(n>0?'+':'')+n;
+function podium(rows){
+  const slots=[[2,'silver','🥈'],[1,'gold','🥇'],[3,'bronze','🥉']].map(([p,c,m])=>[p,c,m,rows.filter(s=>s.pos===p&&s.g>0)]).filter(x=>x[3].length);
+  if(!slots.length)return'';
+  return`<div class="podium" role="group" aria-label="Podio">${slots.map(([p,c,m,l])=>`<div class="pod ${c}"><div class="nm">${l.map(s=>esc(s.p.name)).join('<br>')}</div><div class="rec">${l[0].w}-${l[0].l} · ${sg(l[0].pf-l[0].pa)}</div><div class="blk"><span>${m}</span><b>${p}</b></div></div>`).join('')}</div>`}
 function vFinal(){
   const{rows,dn,top,aw,names}=summary(),share=!!(navigator.canShare&&typeof File==='function'&&navigator.canShare({files:[new File([''],'a.jpg',{type:'image/jpeg'})]}));
   return`<h2>Resumen</h2>
   ${top.length?`<div class="card" style="background:var(--ball)"><div class="mut" style="color:var(--ink)">${top.length>1?'Ganadores (empate)':'Ganador/a'}</div><div class="big">🏆 ${esc(names(top))}</div><div>${top[0].w} victorias · diferencia de puntos ${sg(top[0].pf-top[0].pa)}</div></div>`:'<p class="mut">El ganador aparecerá cuando haya resultados.</p>'}
+  ${podium(rows)}
   <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>Jugador</th><th>V-D</th><th>Dif.</th><th>Compañeros</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}-${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${s.pt.size}</td></tr>`).join('')}</table>
   <p class="mut">Todos juegan los mismos partidos con parejas distintas. Gana quien más victorias suma; si hay empate, decide la diferencia de puntos (puntos a favor menos en contra).</p></div>
   ${aw.map(a=>`<div class="ok"><b>🏅 ${a[0]}</b><br>${esc(a[1])}</div>`).join('')}

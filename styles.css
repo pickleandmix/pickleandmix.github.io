@@ -52,3 +52,13 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .ov canvas{flex:1;width:100%;min-height:0;display:block;touch-action:none;cursor:pointer}
 .ov p{margin:0;padding:12px;text-align:center;color:#fff}
 @keyframes ovin{from{opacity:0;transform:scale(.96)}}
+
+.podium{display:flex;align-items:flex-end;gap:8px;margin:14px 0 4px}
+.pod{flex:1;min-width:0;text-align:center}
+.pod .nm{font:900 clamp(14px,4.4vw,20px)/1.15 "Arial Black",sans-serif;word-break:break-word;padding:0 2px 2px}
+.pod .rec{font-size:13px;color:var(--mut);font-weight:700;margin-bottom:6px}
+.pod .blk{border-radius:16px 16px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding-top:8px;color:var(--ink);box-shadow:0 2px 0 #d5deea}
+.pod .blk span{font-size:28px;line-height:1}.pod .blk b{font:900 30px/1 "Arial Black",sans-serif}
+.pod.gold .blk{height:132px;background:var(--ball)}.pod.silver .blk{height:98px;background:#cfd8e3}.pod.bronze .blk{height:72px;background:#f0b88c}
+
+.foot{text-align:center;margin-top:24px}.foot a{color:var(--court);font-weight:800}
