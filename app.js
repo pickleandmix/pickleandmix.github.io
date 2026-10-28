@@ -188,7 +188,7 @@ function header(){
   const cur={home:'home',game:'go',more:'more',final:'final',setup:'setup'}[view];
   return`<header class="top"><div class="mark">PICKLE<b>&amp;MIX</b></div><nav class="tabs" aria-label="Acceso rápido">${t.map(x=>`<button data-a="${x[0]}"${x[0]===cur?' aria-current="page"':''}>${x[1]}</button>`).join('')}</nav></header>`}
 function vHome(){const n=S.players.length,c=S.settings;
-  return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub">${FX()?'Parejas fijas, grupos y eliminatorias, muchas risas.':'Parejas rotatorias, cero eliminatorias, muchas risas.'}</p>
+  return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub tagline">Elige tu modo de juego, disfruta con tus amigos y consigue <b>tu ranking</b> automáticamente</p>
   <div class="card"><div class="big">${n}</div><div>jugadores inscritos</div><div class="chips" style="margin-top:12px"><span class="chip">${c.courts} pista${c.courts>1?'s':''}</span><span class="chip">a ${c.points} puntos</span>${FX()?'':`<span class="chip">${c.cycles} ciclos</span>`}<span class="chip">${FX()?'grupos + eliminatorias':'parejas rotatorias'}</span></div></div>
   ${S.started?'<button class="btn ball" data-a="go">Continuar la quedada</button>':''}
   <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button><p class="mut foot">Plataforma para pickleballers creada por <a href="https://kikebarcelodg.github.io/" target="_blank" rel="noopener">Kike Barceló</a></p>`}
@@ -204,7 +204,7 @@ function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T
   <button class="btn ghost" data-a="home">Volver</button>`}
 function vGame(){
   const lv=live(),em=ed&&S.matches.find(x=>x.id===ed),m=em||lv.find(x=>x.court===ct)||lv[0];if(m&&!em)ct=m.court;
-  if(!m)return`<div class="logo">¡FIN!</div><p class="sub">No quedan partidos pendientes.</p><button class="btn ball" data-a="final">Ver resumen final</button>${FX()?'':'<button class="btn ghost" data-a="extra">Añadir otro ciclo</button>'}<nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`;
+  if(!m)return`<div class="logo">¡FIN!</div><p class="sub">No quedan partidos pendientes.</p><button class="btn ball" data-a="final">Ver resumen final</button>${FX()?'':'<button class="btn ghost" data-a="extra">Añadir otro ciclo</button>'}<nav><button class="btn ghost sm" data-a="more">Jugadores</button></nav>`;
   tmp=SC[m.id]||(SC[m.id]={id:m.id,a:m.sa??0,b:m.sb??0});
   const idx=S.matches.indexOf(m)+1,nx=pending().find(x=>x!==m&&!lv.includes(x)),
   ctabs=!em&&lv.length>1?`<div class="ctabs" role="tablist" aria-label="Pistas en juego">${lv.map(x=>{const t=SC[x.id];return`<button role="tab" data-ct="${x.court}" aria-selected="${x===m}"><b>Pista ${x.court}</b><small>${t&&(t.a||t.b)?t.a+' - '+t.b:'en juego'}</small></button>`}).join('')}</div>`:'',tm=(t,c,l)=>`<div class="team ${c}"><div class="mut" style="color:#fff">${l}</div><div class="n">${t.map(i=>esc(nameOf(i))).join('<br>')}</div><div class="sc"><button data-sc="${c}-1" aria-label="Restar">−</button><output>${tmp[c]}</output><button data-sc="${c}1" aria-label="Sumar">+</button></div></div>`;
@@ -215,17 +215,16 @@ function vGame(){
   ${nx?`<div class="card pend"><span class="mut">${lv.length>1?'En cola:':'Después:'}</span><br><b>${nx.a.map(nameOf).map(esc).join(' y ')}</b> vs <b>${nx.b.map(nameOf).map(esc).join(' y ')}</b></div>`:''}
   ${!em&&nx&&lv.length<S.settings.courts?'<p class="mut">Hay una pista libre: el siguiente partido necesita a jugadores que todavía están en pista. Empezará cuando terminen.</p>':''}
   ${FX()?fxFlow():''}
-  <nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`}
+  <nav><button class="btn ghost sm" data-a="more">Jugadores</button></nav>`}
 function vMore(){
   const done=S.matches.filter(m=>m.status!=='pending');
-  return`<h2>Jugadores y copia</h2><p class="mut">${FX()?'Parejas fijas: aquí puedes corregir nombres y resultados.':'Cualquier cambio recalcula solo los partidos pendientes.'}</p>
+  return`<h2>Jugadores</h2><p class="mut">${FX()?'Parejas fijas: aquí puedes corregir nombres y resultados.':'Cualquier cambio recalcula solo los partidos pendientes.'}</p>
   ${FX()?fxMore():`<div class="card">${S.players.map(p=>`<div style="margin:10px 0"><div class="row"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><span class="tag fix">${{rest:'Descansa',out:'Se marcha'}[p.status]||'Juega'}</span></div>
   <button class="btn sm ghost" data-st="${p.id}-rest">${p.status==='rest'?'Vuelve':'Descansa'}</button><button class="btn sm ghost" data-st="${p.id}-out">${p.status==='out'?'Ha vuelto / llega':'Se marcha'}</button><button class="btn sm red" data-pd="${p.id}">Quitar</button></div>`).join('')}
   <form data-f="addlive" class="row"><input name="n" placeholder="Nueva persona" autocomplete="off"><button class="btn sm fix">Añadir</button></form></div>`}
   <div class="card"><h3>Resultados</h3>${done.length?done.map(m=>`<div class="row" style="margin:6px 0"><span>${S.matches.indexOf(m)+1}. ${m.a.map(nameOf).map(esc).join('/')} <b>${m.status==='done'?m.sa+'-'+m.sb:''}</b> ${m.b.map(nameOf).map(esc).join('/')} ${m.status==='skipped'?'<span class="tag s">no disputado</span>':''}</span><button class="btn sm ghost fix" data-edit="${m.id}">Editar</button></div>`).join(''):'<p class="mut">Todavía no hay partidos resueltos.</p>'}</div>
-  <button class="btn ghost" data-a="backup">Descargar copia (JSON)</button>
-  <label class="btn ghost" style="text-align:center">Recuperar copia<input type="file" accept=".json,application/json" data-imp hidden></label>
   <button class="btn ball" data-a="final">Ver resumen final</button>
+  <button class="btn ghost" data-a="repeat">Repetir con los mismos jugadores</button>
   <button class="btn red" data-a="reset">Nueva quedada (borra todo)</button>
   <button class="btn ghost" data-a="${S.started?'go':'home'}">Volver</button>`}
 function summary(){
@@ -249,10 +248,11 @@ function vFinal(){
   return`<h2>Resumen</h2>
   ${top.length?`<div class="card" style="background:var(--ball)"><div class="mut" style="color:var(--ink)">${top.length>1?'Ganadores (empate)':'Ganador/a'}</div><div class="big">🏆 ${esc(names(top))}</div><div>${top[0].w} victorias · diferencia de puntos ${sg(top[0].pf-top[0].pa)}</div></div>`:'<p class="mut">El ganador aparecerá cuando haya resultados.</p>'}
   ${podium(rows)}
-  <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>${FX()?'Pareja':'Jugador'}</th><th>V-D</th><th>Dif.</th><th>${FX()?'PJ':'Compañeros'}</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}-${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${FX()?s.g:s.pt.size}</td></tr>`).join('')}</table>
+  <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>${FX()?'Pareja':'Jugador'}</th><th>Victorias</th><th>Derrotas</th><th>Dif.</th><th>${FX()?'PJ':'Compañeros'}</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}</td><td>${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${FX()?s.g:s.pt.size}</td></tr>`).join('')}</table>
   <p class="mut">${FX()?'Parejas fijas: fase de grupos y eliminatorias. El orden final lo decide la eliminatoria; el resto, por victorias y diferencia de puntos.':'Todos juegan los mismos partidos con parejas distintas. Gana quien más victorias suma; si hay empate, decide la diferencia de puntos (puntos a favor menos en contra).'}</p></div>
   ${aw.map(a=>`<div class="ok"><b>🏅 ${a[0]}</b><br>${esc(a[1])}</div>`).join('')}
   ${dn.length?`<button class="btn ball" data-a="story">Descargar imagen para Stories (JPG)</button>${share?'<button class="btn ghost" data-a="storyshare">Compartir imagen…</button>':''}`:''}
+  ${S.started&&S.matches.length&&!pending().length?'<button class="btn ghost" data-a="repeat">Repetir con los mismos jugadores</button><button class="btn red" data-a="reset">Nueva quedada (borra todo)</button>':''}
   <button class="btn ghost" data-a="${S.started?'go':'home'}">Volver</button>`}
 
 /* ---------- Imagen para Instagram Stories (1080x1920) ---------- */
@@ -277,10 +277,8 @@ function storyCanvas(){
     card(48,y,W-96,236,LIME);x.fillStyle=INK;x.font=`800 30px ${BF}`;x.fillText(top.length>1?'GANADORES (EMPATE)':'GANADOR/A',92,y+54);
     const t=fit(names(top),W-96-44-240,`900 #px ${HF}`,84,40);x.fillText(t,92,y+138);
     x.font=`700 32px ${BF}`;x.fillText(`${top[0].w} victorias · diferencia ${sg(top[0].pf-top[0].pa)}`,92,y+194);
-    /* pelota */
-    const bx=W-48-110,by=y+118,r=70,g=x.createRadialGradient(bx-r*.3,by-r*.3,r*.1,bx,by,r);g.addColorStop(0,'#f2ff9a');g.addColorStop(1,'#a9c81d');
-    x.fillStyle=g;x.beginPath();x.arc(bx,by,r,0,7);x.fill();x.lineWidth=5;x.strokeStyle=NAVY;x.stroke();x.fillStyle=NAVY;
-    [[0,0],[-32,-8],[32,-8],[-16,30],[16,30],[0,-40],[-46,22],[46,22]].forEach(([a,b])=>{x.beginPath();x.arc(bx+a,by+b,6,0,7);x.fill()});
+    /* copa */
+    x.font=`400 120px ${BF}`;x.textAlign='center';x.textBaseline='middle';x.fillText('🏆',W-48-110,y+122);x.textAlign='left';x.textBaseline='alphabetic';
     y+=236+26;}
   /* podio (igual que en la pantalla de Resumen: 2º · 1º · 3º, con empates apilados) */
   const slots=[[2,'#cfd8e3','🥈',130],[1,LIME,'🥇',172],[3,'#f0b88c','🥉',96]].map(([p,f,m,bh])=>({p,f,m,bh,l:rows.filter(s=>s.pos===p&&s.g>0)})).filter(o=>o.l.length);
@@ -301,13 +299,13 @@ function storyCanvas(){
   x.textAlign='left';
   /* tabla: altura de fila adaptada al nº de jugadores */
   const LIM=1740,FOOT=70,n=rows.length;let awH=aw.length?28+aw.length*50+22:0,rh=(LIM-y-awH-FOOT-90-44)/n;
-  if(rh<38)rh=(1830-y-awH-FOOT-90-44)/n; /* primero se aprovecha el margen inferior para conservar los premios */
-  if(rh<30){awH=0;rh=(LIM-y-FOOT-90-44)/n;if(rh<30)rh=Math.max(26,(1860-y-FOOT-90-44)/n)}rh=Math.min(86,rh);
+  if(rh<38)rh=(1800-y-awH-FOOT-90-44)/n; /* primero se aprovecha el margen inferior para conservar los premios */
+  if(rh<30){awH=0;rh=(LIM-y-FOOT-90-44)/n;if(rh<30)rh=Math.max(26,(1815-y-FOOT-90-44)/n)}rh=Math.min(86,rh);
   const th=90+n*rh+44,fs=Math.max(22,Math.min(38,rh*.56));
   card(48,y,W-96,th,'#fff');
-  const cx={p:96,n:176,vd:700,df:830,cp:980};
-  x.fillStyle=MUT;x.font=`800 26px ${BF}`;x.textAlign='left';x.fillText('#',cx.p,y+62);x.fillText(FX()?'PAREJA':'JUGADOR',cx.n,y+62);
-  x.textAlign='right';x.fillText('V-D',cx.vd,y+62);x.fillText('DIF.',cx.df,y+62);x.fillText(FX()?'PJ':'COMP.',cx.cp,y+62);
+  const cx={p:96,n:170,w:575,l:745,df:855,cp:995};
+  x.fillStyle=MUT;x.font=`800 22px ${BF}`;x.textAlign='left';x.fillText('#',cx.p,y+62);x.fillText(FX()?'PAREJA':'JUGADOR',cx.n,y+62);
+  x.textAlign='right';x.fillText('VICTORIAS',cx.w,y+62);x.fillText('DERROTAS',cx.l,y+62);x.fillText('DIF.',cx.df,y+62);x.fillText(FX()?'PJ':'COMP.',cx.cp,y+62);
   rows.forEach((s,i)=>{
     const ry=y+90+i*rh,mid=ry+rh/2;
     x.fillStyle='#e1e8f1';x.fillRect(80,ry,W-160,2);
@@ -315,15 +313,16 @@ function storyCanvas(){
     x.textBaseline='middle';
     if(s.pos===1&&s.g>0){const d=Math.min(rh-12,56);rr(cx.p+14-d/2,mid-d/2,d,d,d/2,LIME)}
     x.fillStyle=INK;x.textAlign='center';x.font=`900 ${fs}px ${HF}`;x.fillText(s.pos,cx.p+14,mid);x.textAlign='left';
-    x.font=`700 ${fs}px ${BF}`;x.fillText(fit(s.p.name,cx.vd-cx.n-150,`700 #px ${BF}`,fs,18),cx.n,mid);
-    x.textAlign='right';x.font=`800 ${fs}px ${BF}`;x.fillText(`${s.w}-${s.l}`,cx.vd,mid);x.fillText(sg(s.pf-s.pa),cx.df,mid);x.fillText(FX()?s.g:s.pt.size,cx.cp,mid);
+    x.font=`700 ${fs}px ${BF}`;x.fillText(fit(s.p.name,cx.w-cx.n-165,`700 #px ${BF}`,fs,18),cx.n,mid);
+    x.textAlign='right';x.font=`800 ${fs}px ${BF}`;x.fillText(s.w,cx.w,mid);x.fillText(s.l,cx.l,mid);x.fillText(sg(s.pf-s.pa),cx.df,mid);x.fillText(FX()?s.g:s.pt.size,cx.cp,mid);
     x.textBaseline='alphabetic'});
   y+=th+20;
   /* premios */
   if(awH){rr(48,y,W-96,awH-6,28,'#e6f9b8');x.textBaseline='middle';x.textAlign='left';x.fillStyle=INK;
     aw.forEach((a,i)=>{const ly=y+14+25+i*50,h=a[0]+' · ';x.font=`800 28px ${BF}`;x.fillText(h,84,ly);const hw=x.measureText(h).width;
       x.font=`700 28px ${BF}`;x.fillText(fit(a[1],W-96-72-hw,`700 #px ${BF}`,28,18),84+hw,ly)});x.textBaseline='alphabetic';y+=awH}
-  x.textAlign='center';x.fillStyle=MUT;x.font=`700 30px ${BF}`;x.fillText(`${dn.length} partidos disputados · ${FX()?'parejas fijas':'parejas rotatorias'}`,W/2,Math.min(H-50,y+44));
+  x.textAlign='center';x.fillStyle=MUT;x.font=`700 30px ${BF}`;x.fillText(`${dn.length} partidos disputados · ${FX()?'parejas fijas':'parejas rotatorias'}`,W/2,Math.min(H-92,y+44));
+  x.fillStyle=NAVY;x.font=`800 26px ${BF}`;x.fillText(fit('Juega con tus amigos y consigue el ranking en pickleandmix.github.io',W-96,`800 #px ${BF}`,26,16),W/2,H-40);
   return c;
 }
 function storyBlob(){return new Promise(res=>storyCanvas().toBlob(res,'image/jpeg',.92))}
@@ -358,7 +357,7 @@ const A={
   cancel(){if(tmp)delete SC[tmp.id];ed=null;tmp=null},
   story(){storyBlob().then(b=>{if(!b){toast('No se pudo crear la imagen.');return}const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='pickle-and-mix-resumen-stories.jpg';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Imagen descargada.')})},
   storyshare(){storyBlob().then(b=>{const f=new File([b],'pickle-and-mix-resumen-stories.jpg',{type:'image/jpeg'});navigator.share({files:[f],title:'PICKLE & MIX'}).catch(()=>{})})},
-  backup(){const u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='pickle-and-mix-copia.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)},
+  repeat(){if(!confirm('Se borrarán partidos y resultados, pero se mantienen los jugadores. ¿Continuar?'))return;S.matches=[];S.teams=[];S.draft=[];S.started=false;S.nid=1;S.players.forEach(p=>p.status='active');SC={};ed=null;ct=1;tmp=null;view='setup'},
   reset(){if(confirm('Se borrarán jugadores, partidos y resultados. ¿Seguro?')&&confirm('Última comprobación: ¿empezar una quedada nueva?')){S=fresh();SC={};ed=null;ct=1;tmp=null;view='home'}}
 };
 document.addEventListener('click',e=>{
@@ -380,7 +379,6 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.dr){const[i,j]=t.dataset.dr.split('-').map(Number);S.draft[i][j]=+t.value;save();render();return}
   if(t.dataset.ren){const p=S.players.find(x=>x.id==t.dataset.ren);if(t.value.trim())p.name=t.value.trim().slice(0,24);save();return}
   if(t.dataset.set){const k=t.dataset.set,v=Math.max(1,Math.min(+t.max,parseInt(t.value)||1));S.settings[k]=v;save();render();return}
-  if('imp' in t.dataset){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!valid(d))throw 0;if(!confirm('Se sustituirán los datos actuales. ¿Continuar?'))return;S=d;SC={};ed=null;ct=1;tmp=null;save();msg='Copia recuperada.';view=S.started?'game':'home'}catch(x){err='El archivo no es una copia válida de PICKLE & MIX.'}render()};r.readAsText(t.files[0])}
 });
 if(typeof document!=='undefined'&&document.getElementById('app'))render();
 if(typeof module!=='undefined')module.exports={gen,trial};
