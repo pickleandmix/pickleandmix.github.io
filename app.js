@@ -1,8 +1,8 @@
 'use strict';
 const K='pickleMix.v1',$=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fresh=()=>({players:[],settings:{courts:1,points:7,cycles:3},matches:[],started:false,nid:1});
-function valid(d){return d&&Array.isArray(d.players)&&Array.isArray(d.matches)&&d.settings&&d.players.every(p=>p&&typeof p.id=='number'&&typeof p.name=='string')&&d.matches.every(m=>m&&Array.isArray(m.a)&&Array.isArray(m.b)&&m.a.length==2&&m.b.length==2&&['pending','done','skipped'].includes(m.status))&&['courts','points','cycles'].every(k=>Number.isInteger(d.settings[k])&&d.settings[k]>0)}
+const fresh=()=>({players:[],settings:{courts:1,points:7,cycles:3,mode:'rot',pairing:'random'},matches:[],started:false,nid:1,teams:[],draft:[]});
+function valid(d){return d&&Array.isArray(d.players)&&Array.isArray(d.matches)&&d.settings&&d.players.every(p=>p&&typeof p.id=='number'&&typeof p.name=='string')&&d.matches.every(m=>m&&Array.isArray(m.a)&&Array.isArray(m.b)&&m.a.length==2&&m.b.length==2&&['pending','done','skipped'].includes(m.status))&&(d.settings.mode!=='fixed'||Array.isArray(d.teams))&&['courts','points','cycles'].every(k=>Number.isInteger(d.settings[k])&&d.settings[k]>0)}
 let S=fresh();try{const d=JSON.parse(localStorage.getItem(K));if(valid(d))S=d}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 let view=S.started?'game':'home',tmp=null,msg='',err='',ed=null,ct=1,SC={};
@@ -55,15 +55,77 @@ function live(){
   out.forEach(m=>{if(!m.court){let c=1;while(used.has(c))c++;m.court=c;used.add(c)}});
   return out.sort((a,b)=>a.court-b.court)}
 const nameOf=id=>{const p=S.players.find(p=>p.id===id);return p?p.name:'?'};
+const FX=()=>S.settings.mode==='fixed';
+/* ---------- Parejas fijas ---------- */
+/* Torneo: fase de grupos (todos contra todos dentro de cada grupo) + eliminatorias */
+const fxPlan=T=>({G:T<=4?1:Math.ceil(T/4),Q:T<=2?0:T<=3?2:T<=11?4:8});
+const KOL={1:'Final',2:'Semifinal',4:'Cuartos'},grpL=g=>'Grupo '+String.fromCharCode(65+(g||0));
+const fxMk=(x,y,extra)=>{const T=id=>S.teams.find(t=>t.id===id);S.matches.push(Object.assign({id:S.nid++,cycle:1,court:S.matches.length%S.settings.courts+1,a:T(x).p.slice(),b:T(y).p.slice(),ta:x,tb:y,status:'pending',sa:null,sb:null},extra))};
+function fxBuild(){
+  const{G}=fxPlan(S.teams.length),R=[];
+  S.teams.forEach((t,i)=>t.g=i%G);
+  for(let g=0;g<G;g++){const ids=S.teams.filter(t=>t.g===g).map(t=>t.id);if(ids.length%2)ids.push(0);
+    const n=ids.length;let a=ids.slice();
+    for(let r=0;r<n-1;r++){(R[r]=R[r]||[]);for(let i=0;i<n/2;i++){const x=a[i],y=a[n-1-i];if(x&&y)R[r].push([x,y,g])}
+      a=[a[0],a[n-1],...a.slice(1,n-1)]}}
+  R.forEach(r=>r.forEach(([x,y,g])=>fxMk(x,y,{ph:'g',lbl:grpL(g)})));
+}
+function fxAdvance(){
+  if(!FX()||pending().length)return;
+  const T=S.teams.length,Q=fxPlan(T).Q;if(!Q)return;
+  const ko=S.matches.filter(m=>m.ph==='ko');let pairs=[],n;
+  if(!ko.length){
+    const st=stats(),by=id=>st.find(s=>s.p.id===id),cmp=(x,y)=>rate(y)-rate(x)||dif(y)-dif(x)||y.pf-y.pa-(x.pf-x.pa),gp={};
+    S.teams.forEach(t=>(gp[t.g||0]=gp[t.g||0]||[]).push(by(t.id)));
+    const seeds=[];Object.values(gp).forEach(l=>l.sort(cmp).forEach((s,i)=>{s.gp=i;seeds.push(s)}));
+    seeds.sort((x,y)=>x.gp-y.gp||cmp(x,y));const q=seeds.slice(0,Q).map(s=>s.p.id);
+    const ord={2:[[0,1]],4:[[0,3],[1,2]],8:[[0,7],[3,4],[1,6],[2,5]]}[Q];
+    pairs=ord.map(([i,j])=>[q[i],q[j]]);n=Q/2;
+  }else{
+    const last=ko[ko.length-1].ko;if(last<2)return;
+    const w=ko.filter(m=>m.ko===last).map(m=>m.sa>m.sb?m.ta:m.tb);
+    for(let i=0;i<w.length;i+=2)pairs.push([w[i],w[i+1]]);n=last/2;
+  }
+  pairs.forEach(([x,y])=>fxMk(x,y,{ph:'ko',ko:n,lbl:KOL[n]}));
+}
+/* Gráfico del torneo: grupos → eliminatorias */
+function fxFlow(){
+  const real=S.started&&S.teams.length,T=real?S.teams.length:Math.floor(S.players.length/2);if(T<2)return'';
+  const{G,Q}=fxPlan(T),nm=t=>t.p.map(nameOf).join(' / ');let gr='';
+  if(real){const st=stats();gr=Array.from({length:G},(_,g)=>{const l=st.filter(s=>(S.teams.find(t=>t.id===s.p.id).g||0)===g).sort((x,y)=>rate(y)-rate(x)||dif(y)-dif(x));
+    return`<div class="grp"><h4>${grpL(g)}</h4>${l.map(s=>`<div class="ln"><span>${esc(s.p.name.replace(/ y /g,' / '))}</span><b>${s.w}-${s.l}</b></div>`).join('')}</div>`}).join('')}
+  else gr=Array.from({length:G},(_,g)=>{const z=Math.floor(T/G)+(g<T%G?1:0);return`<div class="grp"><h4>${grpL(g)}</h4><div class="ln"><span>${z} parejas · todas contra todas</span></div></div>`}).join('');
+  let cols='';
+  for(let n=Q/2;n>=1;n/=2){const ms=S.matches.filter(m=>m.ph==='ko'&&m.ko===n),sh=t=>esc(nm(S.teams.find(x=>x.id===t)).slice(0,40));
+    cols+=`<div class="kc"><h4>${KOL[n]}${n>1?'s':''}</h4>${ms.length?ms.map(m=>`<div class="bm">${[[m.ta,m.sa,m.sa>m.sb],[m.tb,m.sb,m.sb>m.sa]].map(([t,s,w])=>`<div${m.status==='done'&&w?' class="w"':''}><span>${sh(t)}</span><b>${m.status==='done'?s:''}</b></div>`).join('')}</div>`).join(''):Array.from({length:n},()=>'<div class="bm ph"><div><span>por definir</span></div><div><span>por definir</span></div></div>').join('')}</div>`}
+  const e=Q?`<div class="fl">▶</div><div class="kc"><h4>Campeón</h4><div class="bm ph" style="text-align:center">🏆</div></div>`:'';
+  return`<div class="card"><h3>Cómo se juega el torneo</h3><p class="mut">1) Fase de grupos: cada pareja juega contra las de su grupo. ${Q?`2) Pasan las ${Q} mejores a eliminatorias directas (el que pierde, fuera).`:''}</p>
+  <div class="flow"><div class="kc"><h4>Grupos</h4>${gr}</div>${Q?`<div class="fl">▶</div>${cols}${e}`:''}</div></div>`}
+const fxTotal=T=>{const{G,Q}=fxPlan(T);let t=Q?Q-1:0;for(let g=0;g<G;g++){const z=Math.floor(T/G)+(g<T%G?1:0);t+=z*(z-1)/2}return t};
+function ensureDraft(){const T=Math.floor(S.players.length/2),ids=new Set(S.players.map(p=>p.id));
+  S.draft=(S.draft||[]).slice(0,T).map(r=>r.map(i=>ids.has(i)?i:0));while(S.draft.length<T)S.draft.push([0,0])}
+const modeSel=()=>{const m=S.settings,b=(k,cur,v,t,sub)=>`<button data-${k}="${v}" aria-selected="${cur===v}"><b>${t}</b><small>${sub}</small></button>`;
+  return`<div class="ctabs" role="tablist" aria-label="Tipo de juego">${b('mode',m.mode||'rot','rot','Rotatorio','individual')}${b('mode',m.mode||'rot','fixed','Parejas fijas','por pareja')}</div>`
+  +(FX()?`<div class="ctabs" role="tablist" aria-label="Formación de parejas">${b('pm',m.pairing||'random','random','Aleatorias','sorteo')}${b('pm',m.pairing||'random','manual','Manuales','las eliges tú')}</div>`:'')};
+const pairsCard=()=>{if(!FX()||S.settings.pairing!=='manual')return'';ensureDraft();const used=new Set(S.draft.flat());
+  const sel=(i,j)=>`<select data-dr="${i}-${j}" aria-label="Pareja ${i+1}, jugador ${j+1}"><option value="0">—</option>${S.players.filter(p=>p.id===S.draft[i][j]||!used.has(p.id)).map(p=>`<option value="${p.id}"${p.id===S.draft[i][j]?' selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
+  return`<div class="card"><h3>Parejas</h3>${S.draft.length?S.draft.map((r,i)=>`<div class="row" style="margin:8px 0"><b class="fix">${i+1}</b>${sel(i,0)}${sel(i,1)}</div>`).join(''):'<p class="mut">Añade jugadores para formar parejas.</p>'}${S.players.length%2?'<p class="err">Hace falta un número par de jugadores.</p>':''}</div>`};
+const fxMore=()=>`<div class="card">${S.teams.map(t=>`<div style="margin:10px 0"><span class="tag">Pareja ${t.id}</span><div class="row" style="margin-top:6px">${t.p.map(i=>`<input value="${esc(nameOf(i))}" data-ren="${i}" aria-label="Nombre">`).join('')}</div></div>`).join('')}</div>`;
 function stats(){
+  if(FX()){const st={};(S.teams||[]).forEach(t=>st[t.id]={p:{id:t.id,name:t.p.map(nameOf).join(' y ')},g:0,w:0,l:0,pf:0,pa:0,pt:new Set()});
+    S.matches.filter(m=>m.status==='done').forEach(m=>[[m.ta,m.sa,m.sb],[m.tb,m.sb,m.sa]].forEach(([t,f,c])=>{const s=st[t];if(!s)return;s.g++;s.pf+=f;s.pa+=c;f>c?s.w++:s.l++}));
+    const ko=S.matches.filter(m=>m.ph==='ko');Object.values(st).forEach(s=>s.lv=5);
+    ko.forEach(m=>[m.ta,m.tb].forEach(t=>{if(st[t]&&st[t].lv>4)st[t].lv=4}));
+    ko.filter(m=>m.status==='done').forEach(m=>{const w=m.sa>m.sb?m.ta:m.tb,l=m.sa>m.sb?m.tb:m.ta;if(st[l])st[l].lv=m.ko===1?1:m.ko===2?2:3;if(m.ko===1&&st[w])st[w].lv=0});
+    return Object.values(st)}
   const st={};S.players.forEach(p=>st[p.id]={p,g:0,w:0,l:0,pf:0,pa:0,pt:new Set()});
   S.matches.filter(m=>m.status==='done').forEach(m=>{
     [[m.a,m.sa,m.sb],[m.b,m.sb,m.sa]].forEach(([t,f,c])=>t.forEach(id=>{const s=st[id];if(!s)return;s.g++;s.pf+=f;s.pa+=c;f>c?s.w++:s.l++;s.pt.add(t[0]===id?t[1]:t[0])}));});
   return Object.values(st);
 }
 const rate=s=>s.g?s.w/s.g:0,dif=s=>s.g?(s.pf-s.pa)/s.g:0;
-const rk=s=>rate(s).toFixed(3)+'|'+dif(s).toFixed(3);
-function ranking(){return stats().sort((x,y)=>rate(y)-rate(x)||dif(y)-dif(x)||y.pf-x.pf)}
+const rk=s=>s.lv<=3?'L'+s.lv:(s.lv||0)+'|'+rate(s).toFixed(3)+'|'+dif(s).toFixed(3);
+function ranking(){return stats().sort((x,y)=>(x.lv||0)-(y.lv||0)||rate(y)-rate(x)||dif(y)-dif(x)||y.pf-x.pf)}
 
 /* ---------- Vistas ---------- */
 const bar=()=>{const t=S.matches.length,d=S.matches.filter(m=>m.status!=='pending').length;return`<div class="bar"><i style="width:${t?d/t*100:0}%"></i></div><span class="mut">${d} de ${t} partidos resueltos</span>`};
@@ -126,37 +188,40 @@ function header(){
   const cur={home:'home',game:'go',more:'more',final:'final',setup:'setup'}[view];
   return`<header class="top"><div class="mark">PICKLE<b>&amp;MIX</b></div><nav class="tabs" aria-label="Acceso rápido">${t.map(x=>`<button data-a="${x[0]}"${x[0]===cur?' aria-current="page"':''}>${x[1]}</button>`).join('')}</nav></header>`}
 function vHome(){const n=S.players.length,c=S.settings;
-  return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub">Parejas rotatorias, cero eliminatorias, muchas risas.</p>
-  <div class="card"><div class="big">${n}</div><div>jugadores inscritos</div><div class="chips" style="margin-top:12px"><span class="chip">${c.courts} pista${c.courts>1?'s':''}</span><span class="chip">a ${c.points} puntos</span><span class="chip">${c.cycles} ciclos</span></div></div>
+  return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub">${FX()?'Parejas fijas, grupos y eliminatorias, muchas risas.':'Parejas rotatorias, cero eliminatorias, muchas risas.'}</p>
+  <div class="card"><div class="big">${n}</div><div>jugadores inscritos</div><div class="chips" style="margin-top:12px"><span class="chip">${c.courts} pista${c.courts>1?'s':''}</span><span class="chip">a ${c.points} puntos</span>${FX()?'':`<span class="chip">${c.cycles} ciclos</span>`}<span class="chip">${FX()?'grupos + eliminatorias':'parejas rotatorias'}</span></div></div>
   ${S.started?'<button class="btn ball" data-a="go">Continuar la quedada</button>':''}
   <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button><p class="mut foot">Plataforma para pickleballers creada por <a href="https://kikebarcelodg.github.io/" target="_blank" rel="noopener">Kike Barceló</a></p>`}
-function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,tot=per*c.cycles;
-  return`<h2>Prepara la quedada</h2>
+function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T=Math.floor(n/2),tot=FX()?fxTotal(T):per*c.cycles;
+  return`<h2>Prepara la quedada</h2>${modeSel()}
   <form class="card" data-f="add"><label class="mut">Añadir jugadores (uno o varios separados por comas o líneas)</label><div class="row"><input name="n" autocomplete="off" placeholder="Nombre"><button class="btn sm fix">Añadir</button></div></form>
   <div class="card">${n?S.players.map(p=>`<div class="row" style="margin:6px 0"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><button class="btn sm red fix" data-del="${p.id}" aria-label="Eliminar ${esc(p.name)}">✕</button></div>`).join(''):'<p class="mut">Aún no hay jugadores. Añade al menos 4 para empezar.</p>'}</div>
-  <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label><label>Ciclos<input type="number" min="1" max="10" value="${c.cycles}" data-set="cycles"></label></div></div>
-  <div class="ok"><b>${n} jugadores</b> · ${c.cycles} ciclos · <b>${tot} partidos previstos</b><br><span class="mut">Planificación orientativa: no garantiza el mismo descanso para todos.</span></div>
+  ${pairsCard()}
+  <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="10" value="${c.cycles}" data-set="cycles"></label>`}</div></div>
+  ${FX()?fxFlow():''}
+  <div class="ok"><b>${n} jugadores</b> · ${FX()?'':c.cycles+' ciclos · '}<b>${tot} partidos previstos</b><br><span class="mut">Planificación orientativa: no garantiza el mismo descanso para todos.</span></div>
   <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar calendario</button>
   <button class="btn ghost" data-a="home">Volver</button>`}
 function vGame(){
   const lv=live(),em=ed&&S.matches.find(x=>x.id===ed),m=em||lv.find(x=>x.court===ct)||lv[0];if(m&&!em)ct=m.court;
-  if(!m)return`<div class="logo">¡FIN!</div><p class="sub">No quedan partidos pendientes.</p><button class="btn ball" data-a="final">Ver resumen final</button><button class="btn ghost" data-a="extra">Añadir otro ciclo</button><nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`;
+  if(!m)return`<div class="logo">¡FIN!</div><p class="sub">No quedan partidos pendientes.</p><button class="btn ball" data-a="final">Ver resumen final</button>${FX()?'':'<button class="btn ghost" data-a="extra">Añadir otro ciclo</button>'}<nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`;
   tmp=SC[m.id]||(SC[m.id]={id:m.id,a:m.sa??0,b:m.sb??0});
   const idx=S.matches.indexOf(m)+1,nx=pending().find(x=>x!==m&&!lv.includes(x)),
   ctabs=!em&&lv.length>1?`<div class="ctabs" role="tablist" aria-label="Pistas en juego">${lv.map(x=>{const t=SC[x.id];return`<button role="tab" data-ct="${x.court}" aria-selected="${x===m}"><b>Pista ${x.court}</b><small>${t&&(t.a||t.b)?t.a+' - '+t.b:'en juego'}</small></button>`}).join('')}</div>`:'',tm=(t,c,l)=>`<div class="team ${c}"><div class="mut" style="color:#fff">${l}</div><div class="n">${t.map(i=>esc(nameOf(i))).join('<br>')}</div><div class="sc"><button data-sc="${c}-1" aria-label="Restar">−</button><output>${tmp[c]}</output><button data-sc="${c}1" aria-label="Sumar">+</button></div></div>`;
-  return`${ctabs}<div class="head"><h2>Partido ${idx}</h2><span class="chip">Ciclo ${m.cycle} · Pista ${m.court}</span></div>${bar()}
+  return`${ctabs}<div class="head"><h2>Partido ${idx}</h2><span class="chip">${FX()?(m.lbl||'Grupo A'):'Ciclo '+m.cycle} · Pista ${m.court}</span></div>${bar()}
   ${tm(m.a,'a','Pareja A')}<div class="vs">contra</div>${tm(m.b,'b','Pareja B')}
   <button class="btn ball" data-a="ok">${m.status==='done'?'Guardar corrección':'Confirmar resultado'}</button>
-  <div class="row"><button class="btn ghost" data-a="skip">Saltar partido</button>${m.status==='done'?'<button class="btn ghost" data-a="cancel">Cancelar</button>':''}</div>
+  <div class="row">${m.ph==='ko'?'':'<button class="btn ghost" data-a="skip">Saltar partido</button>'}${m.status==='done'?'<button class="btn ghost" data-a="cancel">Cancelar</button>':''}</div>
   ${nx?`<div class="card pend"><span class="mut">${lv.length>1?'En cola:':'Después:'}</span><br><b>${nx.a.map(nameOf).map(esc).join(' y ')}</b> vs <b>${nx.b.map(nameOf).map(esc).join(' y ')}</b></div>`:''}
   ${!em&&nx&&lv.length<S.settings.courts?'<p class="mut">Hay una pista libre: el siguiente partido necesita a jugadores que todavía están en pista. Empezará cuando terminen.</p>':''}
+  ${FX()?fxFlow():''}
   <nav><button class="btn ghost sm" data-a="more">Jugadores y copia</button></nav>`}
 function vMore(){
   const done=S.matches.filter(m=>m.status!=='pending');
-  return`<h2>Jugadores y copia</h2><p class="mut">Cualquier cambio recalcula solo los partidos pendientes.</p>
-  <div class="card">${S.players.map(p=>`<div style="margin:10px 0"><div class="row"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><span class="tag fix">${{rest:'Descansa',out:'Se marcha'}[p.status]||'Juega'}</span></div>
+  return`<h2>Jugadores y copia</h2><p class="mut">${FX()?'Parejas fijas: aquí puedes corregir nombres y resultados.':'Cualquier cambio recalcula solo los partidos pendientes.'}</p>
+  ${FX()?fxMore():`<div class="card">${S.players.map(p=>`<div style="margin:10px 0"><div class="row"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><span class="tag fix">${{rest:'Descansa',out:'Se marcha'}[p.status]||'Juega'}</span></div>
   <button class="btn sm ghost" data-st="${p.id}-rest">${p.status==='rest'?'Vuelve':'Descansa'}</button><button class="btn sm ghost" data-st="${p.id}-out">${p.status==='out'?'Ha vuelto / llega':'Se marcha'}</button><button class="btn sm red" data-pd="${p.id}">Quitar</button></div>`).join('')}
-  <form data-f="addlive" class="row"><input name="n" placeholder="Nueva persona" autocomplete="off"><button class="btn sm fix">Añadir</button></form></div>
+  <form data-f="addlive" class="row"><input name="n" placeholder="Nueva persona" autocomplete="off"><button class="btn sm fix">Añadir</button></form></div>`}
   <div class="card"><h3>Resultados</h3>${done.length?done.map(m=>`<div class="row" style="margin:6px 0"><span>${S.matches.indexOf(m)+1}. ${m.a.map(nameOf).map(esc).join('/')} <b>${m.status==='done'?m.sa+'-'+m.sb:''}</b> ${m.b.map(nameOf).map(esc).join('/')} ${m.status==='skipped'?'<span class="tag s">no disputado</span>':''}</span><button class="btn sm ghost fix" data-edit="${m.id}">Editar</button></div>`).join(''):'<p class="mut">Todavía no hay partidos resueltos.</p>'}</div>
   <button class="btn ghost" data-a="backup">Descargar copia (JSON)</button>
   <label class="btn ghost" style="text-align:center">Recuperar copia<input type="file" accept=".json,application/json" data-imp hidden></label>
@@ -166,10 +231,10 @@ function vMore(){
 function summary(){
   const r=ranking(),dn=S.matches.filter(m=>m.status==='done'),aw=[];let pos=0;
   const rows=r.map((s,i)=>{if(i===0||rk(s)!==rk(r[i-1]))pos=i+1;s.pos=pos;return s});
-  const top=rows.filter(s=>s.pos===1&&s.g>0),names=a=>a.map(s=>s.p.name).join(' y ');
+  const open=FX()&&S.teams.length>2&&!S.matches.some(m=>m.ko===1&&m.status==='done'),top=open?[]:rows.filter(s=>s.pos===1&&s.g>0),names=a=>a.map(s=>s.p.name).join(FX()?' · ':' y ');
   if(dn.length){
     const mx=Math.max(...rows.map(s=>s.pt.size)),mn=Math.min(...rows.map(s=>s.pt.size)),u=rows.filter(s=>s.pt.size===mx);
-    if(mx>mn)aw.push(['Compañero universal',`${names(u)}: ${mx} compañeros distintos`]);
+    if(!FX()&&mx>mn)aw.push(['Compañero universal',`${names(u)}: ${mx} compañeros distintos`]);
     const t=dn.reduce((a,b)=>Math.abs(b.sa-b.sb)<Math.abs(a.sa-a.sb)?b:a);
     aw.push(['Partido más ajustado',`${t.a.map(nameOf).join('/')} ${t.sa}-${t.sb} ${t.b.map(nameOf).join('/')}`]);}
   return{rows,dn,top,aw,names};
@@ -184,8 +249,8 @@ function vFinal(){
   return`<h2>Resumen</h2>
   ${top.length?`<div class="card" style="background:var(--ball)"><div class="mut" style="color:var(--ink)">${top.length>1?'Ganadores (empate)':'Ganador/a'}</div><div class="big">🏆 ${esc(names(top))}</div><div>${top[0].w} victorias · diferencia de puntos ${sg(top[0].pf-top[0].pa)}</div></div>`:'<p class="mut">El ganador aparecerá cuando haya resultados.</p>'}
   ${podium(rows)}
-  <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>Jugador</th><th>V-D</th><th>Dif.</th><th>Compañeros</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}-${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${s.pt.size}</td></tr>`).join('')}</table>
-  <p class="mut">Todos juegan los mismos partidos con parejas distintas. Gana quien más victorias suma; si hay empate, decide la diferencia de puntos (puntos a favor menos en contra).</p></div>
+  <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>${FX()?'Pareja':'Jugador'}</th><th>V-D</th><th>Dif.</th><th>${FX()?'PJ':'Compañeros'}</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}-${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${FX()?s.g:s.pt.size}</td></tr>`).join('')}</table>
+  <p class="mut">${FX()?'Parejas fijas: fase de grupos y eliminatorias. El orden final lo decide la eliminatoria; el resto, por victorias y diferencia de puntos.':'Todos juegan los mismos partidos con parejas distintas. Gana quien más victorias suma; si hay empate, decide la diferencia de puntos (puntos a favor menos en contra).'}</p></div>
   ${aw.map(a=>`<div class="ok"><b>🏅 ${a[0]}</b><br>${esc(a[1])}</div>`).join('')}
   ${dn.length?`<button class="btn ball" data-a="story">Descargar imagen para Stories (JPG)</button>${share?'<button class="btn ghost" data-a="storyshare">Compartir imagen…</button>':''}`:''}
   <button class="btn ghost" data-a="${S.started?'go':'home'}">Volver</button>`}
@@ -241,8 +306,8 @@ function storyCanvas(){
   const th=90+n*rh+44,fs=Math.max(22,Math.min(38,rh*.56));
   card(48,y,W-96,th,'#fff');
   const cx={p:96,n:176,vd:700,df:830,cp:980};
-  x.fillStyle=MUT;x.font=`800 26px ${BF}`;x.textAlign='left';x.fillText('#',cx.p,y+62);x.fillText('JUGADOR',cx.n,y+62);
-  x.textAlign='right';x.fillText('V-D',cx.vd,y+62);x.fillText('DIF.',cx.df,y+62);x.fillText('COMP.',cx.cp,y+62);
+  x.fillStyle=MUT;x.font=`800 26px ${BF}`;x.textAlign='left';x.fillText('#',cx.p,y+62);x.fillText(FX()?'PAREJA':'JUGADOR',cx.n,y+62);
+  x.textAlign='right';x.fillText('V-D',cx.vd,y+62);x.fillText('DIF.',cx.df,y+62);x.fillText(FX()?'PJ':'COMP.',cx.cp,y+62);
   rows.forEach((s,i)=>{
     const ry=y+90+i*rh,mid=ry+rh/2;
     x.fillStyle='#e1e8f1';x.fillRect(80,ry,W-160,2);
@@ -251,14 +316,14 @@ function storyCanvas(){
     if(s.pos===1&&s.g>0){const d=Math.min(rh-12,56);rr(cx.p+14-d/2,mid-d/2,d,d,d/2,LIME)}
     x.fillStyle=INK;x.textAlign='center';x.font=`900 ${fs}px ${HF}`;x.fillText(s.pos,cx.p+14,mid);x.textAlign='left';
     x.font=`700 ${fs}px ${BF}`;x.fillText(fit(s.p.name,cx.vd-cx.n-150,`700 #px ${BF}`,fs,18),cx.n,mid);
-    x.textAlign='right';x.font=`800 ${fs}px ${BF}`;x.fillText(`${s.w}-${s.l}`,cx.vd,mid);x.fillText(sg(s.pf-s.pa),cx.df,mid);x.fillText(s.pt.size,cx.cp,mid);
+    x.textAlign='right';x.font=`800 ${fs}px ${BF}`;x.fillText(`${s.w}-${s.l}`,cx.vd,mid);x.fillText(sg(s.pf-s.pa),cx.df,mid);x.fillText(FX()?s.g:s.pt.size,cx.cp,mid);
     x.textBaseline='alphabetic'});
   y+=th+20;
   /* premios */
   if(awH){rr(48,y,W-96,awH-6,28,'#e6f9b8');x.textBaseline='middle';x.textAlign='left';x.fillStyle=INK;
     aw.forEach((a,i)=>{const ly=y+14+25+i*50,h=a[0]+' · ';x.font=`800 28px ${BF}`;x.fillText(h,84,ly);const hw=x.measureText(h).width;
       x.font=`700 28px ${BF}`;x.fillText(fit(a[1],W-96-72-hw,`700 #px ${BF}`,28,18),84+hw,ly)});x.textBaseline='alphabetic';y+=awH}
-  x.textAlign='center';x.fillStyle=MUT;x.font=`700 30px ${BF}`;x.fillText(`${dn.length} partidos disputados · parejas rotatorias`,W/2,Math.min(H-50,y+44));
+  x.textAlign='center';x.fillStyle=MUT;x.font=`700 30px ${BF}`;x.fillText(`${dn.length} partidos disputados · ${FX()?'parejas fijas':'parejas rotatorias'}`,W/2,Math.min(H-50,y+44));
   return c;
 }
 function storyBlob(){return new Promise(res=>storyCanvas().toBlob(res,'image/jpeg',.92))}
@@ -276,12 +341,20 @@ const A={
   setup(){view='setup'},home(){view='home'},go(){view='game';ed=null},more(){view='more'},final(){view='final'},
   start(){const c=S.settings;if(S.players.length<4){err='Necesitas al menos 4 jugadores.';return}
     if(S.players.length<4*c.courts){err=`Con ${c.courts} pistas necesitas al menos ${4*c.courts} jugadores.`;return}
-    S.players.forEach(p=>p.status='active');S.matches=[];rebuild(Math.floor(S.players.length/4)*c.cycles);S.started=true;SC={};ed=null;ct=1;view='game'},
-  extra(){rebuild(pending().length+Math.floor(active().length/4));ed=null;view='game'},
+    if(FX()&&S.players.length%2){err='Con parejas fijas necesitas un número par de jugadores.';return}
+    if(FX()&&c.pairing==='manual'){ensureDraft();if(S.draft.some(r=>!r[0]||!r[1])){err='Completa todas las parejas.';return}}
+    S.players.forEach(p=>p.status='active');S.matches=[];
+    if(FX()){const ids=S.players.map(p=>p.id);let pr=[];
+      if(c.pairing==='manual')pr=S.draft.map(r=>r.slice());
+      else{for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}for(let i=0;i<ids.length;i+=2)pr.push([ids[i],ids[i+1]])}
+      S.teams=pr.map((p,i)=>({id:i+1,p}));fxBuild()}
+    else rebuild(Math.floor(S.players.length/4)*c.cycles);
+    S.started=true;SC={};ed=null;ct=1;view='game'},
+  extra(){if(FX())return;rebuild(pending().length+Math.floor(active().length/4));ed=null;view='game'},
   ok(){const m=S.matches.find(x=>x.id===tmp.id),p=S.settings.points,{a,b}=tmp;
     if(a===b||Math.max(a,b)<p){err=`El ganador debe llegar al menos a ${p} puntos y no puede haber empate.`;return}
-    m.sa=a;m.sb=b;m.status='done';delete SC[m.id];ed=null;tmp=null;view='game'},
-  skip(){if(!confirm('¿Marcar este partido como no disputado?'))return;const m=S.matches.find(x=>x.id===tmp.id);m.status='skipped';m.sa=m.sb=null;delete SC[m.id];ed=null;tmp=null},
+    m.sa=a;m.sb=b;m.status='done';delete SC[m.id];ed=null;tmp=null;view='game';fxAdvance()},
+  skip(){if(!confirm('¿Marcar este partido como no disputado?'))return;const m=S.matches.find(x=>x.id===tmp.id);m.status='skipped';m.sa=m.sb=null;delete SC[m.id];ed=null;tmp=null;fxAdvance()},
   cancel(){if(tmp)delete SC[tmp.id];ed=null;tmp=null},
   story(){storyBlob().then(b=>{if(!b){toast('No se pudo crear la imagen.');return}const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='pickle-and-mix-resumen-stories.jpg';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Imagen descargada.')})},
   storyshare(){storyBlob().then(b=>{const f=new File([b],'pickle-and-mix-resumen-stories.jpg',{type:'image/jpeg'});navigator.share({files:[f],title:'PICKLE & MIX'}).catch(()=>{})})},
@@ -289,10 +362,12 @@ const A={
   reset(){if(confirm('Se borrarán jugadores, partidos y resultados. ¿Seguro?')&&confirm('Última comprobación: ¿empezar una quedada nueva?')){S=fresh();SC={};ed=null;ct=1;tmp=null;view='home'}}
 };
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-a],[data-sc],[data-ct],[data-del],[data-st],[data-pd],[data-edit]');if(!t)return;const d=t.dataset;
+  const t=e.target.closest('[data-a],[data-sc],[data-ct],[data-del],[data-st],[data-pd],[data-edit],[data-mode],[data-pm]');if(!t)return;const d=t.dataset;
   if(d.a)A[d.a]();
   else if(d.sc){const c=d.sc[0],v=+d.sc.slice(1);tmp[c]=Math.max(0,Math.min(99,tmp[c]+v));$('#app').innerHTML=header()+vGame();return}
   else if(d.ct){ct=+d.ct;ed=null}
+  else if(d.mode)S.settings.mode=d.mode;
+  else if(d.pm)S.settings.pairing=d.pm;
   else if(d.del)S.players=S.players.filter(p=>p.id!==+d.del);
   else if(d.edit){const m=S.matches.find(x=>x.id===+d.edit);if(m.status==='skipped')m.status='pending';delete SC[m.id];ed=m.id;view='game'}
   else if(d.st){const[i,s]=d.st.split('-'),p=S.players.find(x=>x.id==i);p.status=p.status===s?'active':s;replan(p.name+(p.status==='active'?' vuelve a jugar.':p.status==='rest'?' descansa.':' se marcha.'))}
@@ -302,6 +377,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('submit',e=>{e.preventDefault();const f=e.target.dataset.f,v=e.target.n.value;if(!v.trim())return;
   addNames(v);if(f==='addlive')replan('Jugador añadido.');save();render()});
 document.addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.dr){const[i,j]=t.dataset.dr.split('-').map(Number);S.draft[i][j]=+t.value;save();render();return}
   if(t.dataset.ren){const p=S.players.find(x=>x.id==t.dataset.ren);if(t.value.trim())p.name=t.value.trim().slice(0,24);save();return}
   if(t.dataset.set){const k=t.dataset.set,v=Math.max(1,Math.min(+t.max,parseInt(t.value)||1));S.settings[k]=v;save();render();return}
   if('imp' in t.dataset){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!valid(d))throw 0;if(!confirm('Se sustituirán los datos actuales. ¿Continuar?'))return;S=d;SC={};ed=null;ct=1;tmp=null;save();msg='Copia recuperada.';view=S.started?'game':'home'}catch(x){err='El archivo no es una copia válida de PICKLE & MIX.'}render()};r.readAsText(t.files[0])}

@@ -61,6 +61,15 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .pod .blk span{font-size:28px;line-height:1}.pod .blk b{font:900 30px/1 "Arial Black",sans-serif}
 .pod.gold .blk{height:132px;background:var(--ball)}.pod.silver .blk{height:98px;background:#cfd8e3}.pod.bronze .blk{height:72px;background:#f0b88c}
 
+.flow{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:6px 0}
+.flow .kc{flex:0 0 auto;min-width:130px;max-width:170px;display:flex;flex-direction:column;gap:8px;justify-content:space-around;align-self:stretch}
+.flow h4{margin:0;font-size:12px;text-transform:uppercase;color:var(--mut);letter-spacing:.5px}
+.fl{color:var(--mut);font-weight:900;flex:none}
+.grp,.bm{background:#f3f7fb;border:2px solid #cdd8e6;border-radius:12px;padding:6px 8px;font-size:13px}
+.grp h4{color:var(--court)}.ln,.bm>div{display:flex;justify-content:space-between;gap:6px;padding:2px 0}
+.ln span,.bm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.bm>div+div{border-top:1px solid #cdd8e6}.bm .w{font-weight:900;background:var(--ball);border-radius:6px;padding:2px 4px}
+.bm.ph{opacity:.6;border-style:dashed}
 .foot{text-align:center;margin-top:24px}.foot a{color:var(--court);font-weight:800}
 
 .ctabs{display:flex;gap:8px;margin:4px 0 12px}
