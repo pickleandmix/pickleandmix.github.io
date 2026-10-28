@@ -217,9 +217,27 @@ function storyCanvas(){
     x.fillStyle=g;x.beginPath();x.arc(bx,by,r,0,7);x.fill();x.lineWidth=5;x.strokeStyle=NAVY;x.stroke();x.fillStyle=NAVY;
     [[0,0],[-32,-8],[32,-8],[-16,30],[16,30],[0,-40],[-46,22],[46,22]].forEach(([a,b])=>{x.beginPath();x.arc(bx+a,by+b,6,0,7);x.fill()});
     y+=236+26;}
+  /* podio (igual que en la pantalla de Resumen: 2º · 1º · 3º, con empates apilados) */
+  const slots=[[2,'#cfd8e3','🥈',130],[1,LIME,'🥇',172],[3,'#f0b88c','🥉',96]].map(([p,f,m,bh])=>({p,f,m,bh,l:rows.filter(s=>s.pos===p&&s.g>0)})).filter(o=>o.l.length);
+  if(slots.length){
+    const gap=16,k=slots.length,cw=(W-96-gap*(k-1))/k,NL=40,RC=34,ph=Math.max(...slots.map(o=>o.l.length*NL+RC+8+o.bh)),yb=y+ph;
+    slots.forEach((o,i)=>{
+      const x0=48+i*(cw+gap),mx=x0+cw/2;
+      x.fillStyle='#d5deea';x.beginPath();x.roundRect?x.roundRect(x0,yb-o.bh+4,cw,o.bh,[28,28,0,0]):x.rect(x0,yb-o.bh+4,cw,o.bh);x.fill();
+      x.fillStyle=o.f;x.beginPath();x.roundRect?x.roundRect(x0,yb-o.bh,cw,o.bh,[28,28,0,0]):x.rect(x0,yb-o.bh,cw,o.bh);x.fill();
+      x.textAlign='center';x.textBaseline='alphabetic';x.fillStyle=INK;
+      x.font=`400 34px ${BF}`;x.fillText(o.m,mx,yb-o.bh+46);
+      x.font=`900 38px ${HF}`;x.fillText(o.p,mx,yb-o.bh+86);
+      x.fillStyle=MUT;x.font=`700 24px ${BF}`;x.fillText(`${o.l[0].w}-${o.l[0].l} · ${sg(o.l[0].pf-o.l[0].pa)}`,mx,yb-o.bh-12);
+      x.fillStyle=INK;
+      o.l.forEach((s,j)=>{const t=fit(s.p.name,cw-16,`900 #px ${HF}`,32,16);x.fillText(t,mx,yb-o.bh-12-RC+4-(o.l.length-1-j)*NL)});
+    });
+    y+=ph+24;}
+  x.textAlign='left';
   /* tabla: altura de fila adaptada al nº de jugadores */
   const LIM=1740,FOOT=70,n=rows.length;let awH=aw.length?28+aw.length*50+22:0,rh=(LIM-y-awH-FOOT-90-44)/n;
-  if(rh<44){awH=0;rh=(LIM-y-FOOT-90-44)/n}if(rh<34)rh=Math.max(28,(1860-y-FOOT-90-44)/n);rh=Math.min(86,rh);
+  if(rh<38)rh=(1830-y-awH-FOOT-90-44)/n; /* primero se aprovecha el margen inferior para conservar los premios */
+  if(rh<30){awH=0;rh=(LIM-y-FOOT-90-44)/n;if(rh<30)rh=Math.max(26,(1860-y-FOOT-90-44)/n)}rh=Math.min(86,rh);
   const th=90+n*rh+44,fs=Math.max(22,Math.min(38,rh*.56));
   card(48,y,W-96,th,'#fff');
   const cx={p:96,n:176,vd:700,df:830,cp:980};
