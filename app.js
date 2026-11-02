@@ -39,6 +39,46 @@ function gen(ids,count,done,courts,base){
   for(let t=0;t<40;t++){const r=trial(ids,count,done,courts,base);if(r.s<bs){bs=r.s;best=r.m}}
   return best;
 }
+/* Parejas rotatorias: «Ciclos» = partidos que juega cada persona.
+   Total = ceil(jugadores·ciclos/4). Si no es exacto, (4·total − jugadores·ciclos) jugadores juegan 1 partido más (diferencia máxima: 1). */
+function trialQ(ids,c,courts){
+  const n=ids.length,M=Math.ceil(n*c/4),ex=4*M-n*c,need={},pt={},op={},qd={},m=[],last=[];let s=0;
+  ids.slice().sort(()=>Math.random()-.5).forEach((id,i)=>need[id]=c+(i<ex?1:0));
+  for(let i=0;i<M;i++){
+    const left=M-i-1,win=new Set(),prev=new Set();
+    if(courts>1)last.slice(-(courts-1)).forEach(st=>st.forEach(x=>win.add(x)));
+    if(last.length)last[last.length-1].forEach(x=>prev.add(x));
+    const cand=ids.filter(id=>need[id]>0).map(id=>({id,k:-need[id]*100+(win.has(id)?150:0)+(prev.has(id)?40:0)+Math.random()*30})).sort((x,y)=>x.k-y.k).map(x=>x.id);
+    if(cand.length<4)break;
+    let bc=null,bs=1e18;
+    for(const lim of[10,cand.length]){
+      const pool=cand.slice(0,lim);
+      for(let a=0;a<pool.length;a++)for(let b=a+1;b<pool.length;b++)for(let e=b+1;e<pool.length;e++)for(let d=e+1;d<pool.length;d++){
+        const q=[pool[a],pool[b],pool[e],pool[d]],sel=new Set(q);let mx=0;
+        for(const id of ids){const v=need[id]-(sel.has(id)?1:0);if(v>mx)mx=v}
+        if(mx>left)continue; /* debe seguir siendo posible cuadrar el reparto */
+        const rc=q.filter(x=>win.has(x)).length*5000+q.filter(x=>prev.has(x)).length*200,qk=q.slice().sort((x,y)=>x-y).join();
+        for(const[p1,p2]of[[[q[0],q[1]],[q[2],q[3]]],[[q[0],q[2]],[q[1],q[3]]],[[q[0],q[3]],[q[1],q[2]]]]){
+          let sc=rc+(pt[key(...p1)]||0)*100+(pt[key(...p2)]||0)*100+(qd[qk]||0)*40+Math.random()*3;
+          p1.forEach(x=>p2.forEach(y=>sc+=(op[key(x,y)]||0)*10));
+          if(sc<bs){bs=sc;bc=[p1,p2]}}}
+      if(bc)break;
+    }
+    if(!bc){const q=cand.slice(0,4);bc=[[q[0],q[1]],[q[2],q[3]]];bs+=1e6}
+    const[p1,p2]=bc,all=[...p1,...p2];
+    pt[key(...p1)]=(pt[key(...p1)]||0)+1;pt[key(...p2)]=(pt[key(...p2)]||0)+1;
+    p1.forEach(x=>p2.forEach(y=>op[key(x,y)]=(op[key(x,y)]||0)+1));
+    const q=all.slice().sort((x,y)=>x-y).join();qd[q]=(qd[q]||0)+1;
+    all.forEach(x=>need[x]--);last.push(new Set(all));s+=bs<1e17?bs:0;
+    m.push({id:0,cycle:Math.min(c,Math.floor(i*4/n)+1),court:i%courts+1,a:p1,b:p2,status:'pending',sa:null,sb:null});
+  }
+  return{m,s:s+(m.length<M?1e9:0)};
+}
+function genQ(ids,c,courts){
+  const M=Math.ceil(ids.length*c/4),T=M>40?15:40;let best=null,bs=1e18;
+  for(let t=0;t<T;t++){const r=trialQ(ids,c,courts);if(r.s<bs){bs=r.s;best=r.m}}
+  return best;
+}
 const active=()=>S.players.filter(p=>p.status!=='rest'&&p.status!=='out');
 function rebuild(count){
   const keep=S.matches.filter(m=>m.status!=='pending'),ids=active().map(p=>p.id);
@@ -129,9 +169,11 @@ function ranking(){return stats().sort((x,y)=>(x.lv||0)-(y.lv||0)||rate(y)-rate(
 
 /* ---------- Vistas ---------- */
 const bar=()=>{const t=S.matches.length,d=S.matches.filter(m=>m.status!=='pending').length;return`<div class="bar"><i style="width:${t?d/t*100:0}%"></i></div><span class="mut">${d} de ${t} partidos resueltos</span>`};
+/* Pie de página: visible en todas las pestañas */
+const foot=()=>`<p class="mut foot">Plataforma para pickleballers creada por <a href="https://kikebarcelodg.github.io/" target="_blank" rel="noopener">Kike Barceló</a></p>`;
 function render(){
   const f={home:vHome,setup:vSetup,game:vGame,more:vMore,final:vFinal}[view];
-  $('#app').innerHTML=header()+f()+(err?`<div class="err">${esc(err)}</div>`:'');err='';if(view==='home')initPong('pong',null,true);
+  $('#app').innerHTML=header()+f()+(err?`<div class="err">${esc(err)}</div>`:'')+foot();err='';if(view==='home')initPong('pong',null,true);
   if(msg){toast(msg);msg=''}
 }
 let PG={u:0,c:0};
@@ -191,14 +233,34 @@ function vHome(){const n=S.players.length,c=S.settings;
   return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub tagline">Elige tu modo de juego, disfruta con tus amigos y consigue <b>tu ranking</b> automáticamente</p>
   <div class="card"><div class="big">${n}</div><div>jugadores inscritos</div><div class="chips" style="margin-top:12px"><span class="chip">${c.courts} pista${c.courts>1?'s':''}</span><span class="chip">a ${c.points} puntos</span>${FX()?'':`<span class="chip">${c.cycles} ciclos</span>`}<span class="chip">${FX()?'grupos + eliminatorias':'parejas rotatorias'}</span></div></div>
   ${S.started?'<button class="btn ball" data-a="go">Continuar la quedada</button>':''}
-  <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button><p class="mut foot">Plataforma para pickleballers creada por <a href="https://kikebarcelodg.github.io/" target="_blank" rel="noopener">Kike Barceló</a></p>`}
-function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T=Math.floor(n/2),tot=FX()?fxTotal(T):per*c.cycles;
+  <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button>`}
+/* Resumen del modo rotatorio: reparto por jugador y duración estimada (valores medios orientativos) */
+const DUR={7:11,9:14,11:18,15:25};
+function durOf(p){if(DUR[p])return DUR[p];const k=[7,9,11,15];let a,b;
+  if(p<7){a=7;b=9}else if(p>15){a=11;b=15}else{a=k.filter(x=>x<p).pop();b=k.find(x=>x>p)}
+  return Math.max(4,DUR[a]+(DUR[b]-DUR[a])*(p-a)/(b-a))}
+function rotInfo(n,c,courts,points){
+  if(n<4)return null;
+  const M=Math.ceil(n*c/4),ex=4*M-n*c,P=Math.max(1,Math.min(courts,Math.floor(n/4))),
+  rounds=Math.max(Math.ceil(M/P),c+(ex?1:0)),dur=durOf(points);
+  let up=c+1;while(n*up%4)up++;let dn=c-1;while(dn>=1&&n*dn%4)dn--;
+  return{n,c,M,ex,P,rounds,dur,tot:rounds*dur+(rounds-1)*2,up,dn:dn>=1?dn:0}}
+const fmtMin=t=>{t=Math.max(5,Math.round(t/5)*5);const h=Math.floor(t/60),m=t%60;return h?h+' h'+(m?' '+m+' min':''):m+' min'};
+function rotSummary(){
+  const s=S.settings,r=rotInfo(S.players.length,s.cycles,s.courts,s.points);
+  if(!r)return'<div class="card"><h3>Resumen</h3><p class="mut">Añade al menos 4 jugadores para ver el reparto previsto.</p></div>';
+  const jug=k=>k===1?'1 jugador jugará':k+' jugadores jugarán',pa=k=>k+(k===1?' partido':' partidos'),ok=!r.ex;
+  return`<div class="card"><h3>Resumen</h3>
+  <p style="margin:8px 0 4px"><b>${pa(r.M)} previstos.</b> ${ok?`Todos los jugadores jugarán ${pa(r.c)}.`:`${jug(r.n-r.ex)} ${pa(r.c)} y ${r.ex===1?'1 jugará':r.ex+' jugarán'} ${r.c+1}.`}</p>
+  ${ok?'':`<div class="err">⚠️ Reparto desigual: algunos jugadores disputarán un partido más que otros. Para igualar el reparto, prueba con ${r.up} ciclos${r.dn?` (o con ${r.dn})`:''}. Puedes empezar igualmente.</div>`}
+  <p class="mut" style="margin:6px 0 0">⏱ Duración estimada: aprox. <b>${fmtMin(r.tot)}</b> (${r.rounds} turnos de ~${Math.round(r.dur)} min + 2 min de transición, con ${r.P} partido${r.P>1?'s':''} a la vez). Es una estimación aproximada, no una garantía.</p></div>`}
+function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T=Math.floor(n/2),tot=FX()?fxTotal(T):(n>=4?Math.ceil(n*c.cycles/4):0);
   return`<h2>Prepara la quedada</h2>${modeSel()}
   <form class="card" data-f="add"><label class="mut">Añadir jugadores (uno o varios separados por comas o líneas)</label><div class="row"><input name="n" autocomplete="off" placeholder="Nombre"><button class="btn sm fix">Añadir</button></div></form>
   <div class="card">${n?S.players.map(p=>`<div class="row" style="margin:6px 0"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><button class="btn sm red fix" data-del="${p.id}" aria-label="Eliminar ${esc(p.name)}">✕</button></div>`).join(''):'<p class="mut">Aún no hay jugadores. Añade al menos 4 para empezar.</p>'}</div>
   ${pairsCard()}
   <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="10" value="${c.cycles}" data-set="cycles"></label>`}</div></div>
-  ${FX()?fxFlow():''}
+  ${FX()?fxFlow():rotSummary()}
   <div class="ok"><b>${n} jugadores</b> · ${FX()?'':c.cycles+' ciclos · '}<b>${tot} partidos previstos</b><br><span class="mut">Planificación orientativa: no garantiza el mismo descanso para todos.</span></div>
   <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar calendario</button>
   <button class="btn ghost" data-a="home">Volver</button>`}
@@ -347,7 +409,7 @@ const A={
       if(c.pairing==='manual')pr=S.draft.map(r=>r.slice());
       else{for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}for(let i=0;i<ids.length;i+=2)pr.push([ids[i],ids[i+1]])}
       S.teams=pr.map((p,i)=>({id:i+1,p}));fxBuild()}
-    else rebuild(Math.floor(S.players.length/4)*c.cycles);
+    else{const nm=genQ(S.players.map(p=>p.id),c.cycles,c.courts);nm.forEach(m=>m.id=S.nid++);S.matches=nm}
     S.started=true;SC={};ed=null;ct=1;view='game'},
   extra(){if(FX())return;rebuild(pending().length+Math.floor(active().length/4));ed=null;view='game'},
   ok(){const m=S.matches.find(x=>x.id===tmp.id),p=S.settings.points,{a,b}=tmp;
@@ -363,7 +425,7 @@ const A={
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-a],[data-sc],[data-ct],[data-del],[data-st],[data-pd],[data-edit],[data-mode],[data-pm]');if(!t)return;const d=t.dataset;
   if(d.a)A[d.a]();
-  else if(d.sc){const c=d.sc[0],v=+d.sc.slice(1);tmp[c]=Math.max(0,Math.min(99,tmp[c]+v));$('#app').innerHTML=header()+vGame();return}
+  else if(d.sc){const c=d.sc[0],v=+d.sc.slice(1);tmp[c]=Math.max(0,Math.min(99,tmp[c]+v));$('#app').innerHTML=header()+vGame()+foot();return}
   else if(d.ct){ct=+d.ct;ed=null}
   else if(d.mode)S.settings.mode=d.mode;
   else if(d.pm)S.settings.pairing=d.pm;
@@ -381,6 +443,6 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.set){const k=t.dataset.set,v=Math.max(1,Math.min(+t.max,parseInt(t.value)||1));S.settings[k]=v;save();render();return}
 });
 if(typeof document!=='undefined'&&document.getElementById('app'))render();
-if(typeof module!=='undefined')module.exports={gen,trial};
+if(typeof module!=='undefined')module.exports={gen,trial,genQ,rotInfo};
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')A.closeg()});
