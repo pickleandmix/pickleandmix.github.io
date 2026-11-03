@@ -241,6 +241,7 @@ function vHome(){const n=S.players.length,c=S.settings;
   ${S.started?'<button class="btn ball" data-a="go">Continuar la quedada</button>':''}
   <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button>`}
 /* Resumen del modo rotatorio: reparto por jugador y duración estimada (valores medios orientativos) */
+const CMAX=20; /* máximo de ciclos (partidos por jugador) que admite el campo «Ciclos» */
 const DUR={7:11,9:14,11:18,15:25};
 function durOf(p){if(DUR[p])return DUR[p];const k=[7,9,11,15];let a,b;
   if(p<7){a=7;b=9}else if(p>15){a=11;b=15}else{a=k.filter(x=>x<p).pop();b=k.find(x=>x>p)}
@@ -250,23 +251,23 @@ function rotInfo(n,c,courts,points){
   const M=Math.ceil(n*c/4),ex=4*M-n*c,P=Math.max(1,Math.min(courts,Math.floor(n/4))),
   rounds=Math.max(Math.ceil(M/P),c+(ex?1:0)),dur=durOf(points);
   let up=c+1;while(n*up%4)up++;let dn=c-1;while(dn>=1&&n*dn%4)dn--;
-  return{n,c,M,ex,P,rounds,dur,tot:rounds*dur+(rounds-1)*2,up,dn:dn>=1?dn:0}}
+  return{n,c,M,ex,P,rounds,dur,tot:rounds*dur+(rounds-1)*2,up:up<=CMAX?up:0,dn:dn>=1?dn:0}}
 const fmtMin=t=>{t=Math.max(5,Math.round(t/5)*5);const h=Math.floor(t/60),m=t%60;return h?h+' h'+(m?' '+m+' min':''):m+' min'};
 function rotSummary(){
   const s=S.settings,r=rotInfo(S.players.length,s.cycles,s.courts,s.points);
   if(!r)return'<div class="card"><h3>Resumen</h3><p class="mut">Añade al menos 4 jugadores para ver el reparto previsto.</p></div>';
-  const jug=k=>k===1?'1 jugador jugará':k+' jugadores jugarán',pa=k=>k+(k===1?' partido':' partidos'),ok=!r.ex;
+  const jug=k=>k===1?'1 jugador jugará':k+' jugadores jugarán',pa=k=>k+(k===1?' partido':' partidos'),ok=!r.ex,alts=[r.up,r.dn].filter(Boolean);
   return`<div class="card"><h3>Resumen</h3>
   <div class="sl"><span class="ic">🎾</span><div><b>${pa(r.M)} previstos</b></div></div>
   <div class="sl"><span class="ic">👥</span><div>${ok?`Todos los jugadores jugarán <b>${pa(r.c)}</b>.`:`<b>${jug(r.n-r.ex)} ${pa(r.c)}</b> y <b>${r.ex===1?'1 jugará':r.ex+' jugarán'} ${r.c+1}</b>.`}</div></div>
-  ${ok?'':`<div class="err">⚠️ Reparto desigual: algunos jugadores disputarán un partido más que otros. Para igualar el reparto, prueba con ${r.up} ciclos${r.dn?` (o con ${r.dn})`:''}. Puedes empezar igualmente.</div>`}
+  ${ok?'':`<div class="err">⚠️ Reparto desigual: algunos jugadores disputarán un partido más que otros. ${alts.length?`Para igualar el reparto, prueba con ${alts.join(' o ')} ciclos. `:''}Puedes empezar igualmente.</div>`}
   <div class="sl"><span class="ic">⏱</span><div>Duración estimada: <b>aprox. ${fmtMin(r.tot)}</b><br><span class="mut">${r.rounds} turnos de ~${Math.round(r.dur)} min + 2 min de transición, con ${r.P} partido${r.P>1?'s':''} a la vez. Estimación aproximada, no una garantía.</span></div></div></div>`}
 function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T=Math.floor(n/2),tot=FX()?fxTotal(T):(n>=4?Math.ceil(n*c.cycles/4):0);
   return`<h2>Prepara la quedada</h2><p class="lead">Añade a los jugadores y ajusta pistas, puntos${FX()?'':' y ciclos'}.</p>${modeSel()}
   <form class="card" data-f="add"><label class="mut">Añadir jugadores (uno o varios separados por comas o líneas)</label><div class="row"><input name="n" autocomplete="off" placeholder="Nombre"><button class="btn sm fix">Añadir</button></div>${nameErrBox()}</form>
   <div class="card">${n?S.players.map(p=>`<div class="row" style="margin:6px 0"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><button class="btn sm red fix" data-del="${p.id}" aria-label="Eliminar ${esc(p.name)}">✕</button></div>`).join(''):'<div class="empty">👥<br><b>Aún no hay jugadores</b><br>Añade al menos 4 para empezar.</div>'}</div>
   ${pairsCard()}
-  <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="10" value="${c.cycles}" data-set="cycles"></label>`}</div>${FX()?'':'<p class="hint">🔁 <b>Ciclos</b> = partidos que juega cada persona.</p>'}</div>
+  <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="${CMAX}" value="${c.cycles}" data-set="cycles"></label>`}</div>${FX()?'':'<p class="hint">🔁 <b>Ciclos</b> = partidos que juega cada persona.</p>'}</div>
   ${FX()?fxFlow():rotSummary()}
   <div class="ok"><div class="stats"><div class="stat"><b>${n}</b><span>jugadores</span></div>${FX()?'':`<div class="stat"><b>${c.cycles}</b><span>ciclos</span></div>`}<div class="stat"><b>${tot}</b><span>partidos previstos</span></div></div><p class="mut" style="margin:8px 0 0">ℹ️ Planificación orientativa: no garantiza el mismo descanso para todos.</p></div>
   <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar calendario</button>
