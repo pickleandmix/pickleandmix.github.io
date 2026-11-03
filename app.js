@@ -5,7 +5,8 @@ const fresh=()=>({players:[],settings:{courts:1,points:7,cycles:3,mode:'rot',pai
 function valid(d){return d&&Array.isArray(d.players)&&Array.isArray(d.matches)&&d.settings&&d.players.every(p=>p&&typeof p.id=='number'&&typeof p.name=='string')&&d.matches.every(m=>m&&Array.isArray(m.a)&&Array.isArray(m.b)&&m.a.length==2&&m.b.length==2&&['pending','done','skipped'].includes(m.status))&&(d.settings.mode!=='fixed'||Array.isArray(d.teams))&&['courts','points','cycles'].every(k=>Number.isInteger(d.settings[k])&&d.settings[k]>0)}
 let S=fresh();try{const d=JSON.parse(localStorage.getItem(K));if(valid(d))S=d}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
-let view=S.started?'game':'home',tmp=null,msg='',err='',ed=null,ct=1,SC={};
+let view=S.started?'game':'home',tmp=null,msg='',err='',nerr='',ed=null,ct=1,SC={};
+const nameErrBox=()=>nerr?`<div class="err">${esc(nerr)}</div>`:'';
 
 /* ---------- Algoritmo de rotación ---------- */
 const key=(x,y)=>x<y?x+'-'+y:y+'-'+x;
@@ -41,9 +42,14 @@ function gen(ids,count,done,courts,base){
 }
 /* Parejas rotatorias: «Ciclos» = partidos que juega cada persona.
    Total = ceil(jugadores·ciclos/4). Si no es exacto, (4·total − jugadores·ciclos) jugadores juegan 1 partido más (diferencia máxima: 1). */
-function trialQ(ids,c,courts){
-  const n=ids.length,M=Math.ceil(n*c/4),ex=4*M-n*c,need={},pt={},op={},qd={},m=[],last=[];let s=0;
-  ids.slice().sort(()=>Math.random()-.5).forEach((id,i)=>need[id]=c+(i<ex?1:0));
+function trialQ(ids,c,courts,pre){
+  const n=ids.length,M=Math.ceil(n*c/4),ex=4*M-n*c,need={},pt={},op={},qd={},m=[],last=[],have=(pre&&pre.have)||{};let s=0;
+  /* los puestos extra van a quien menos partidos lleva (sin historial previo, al azar) */
+  ids.map(id=>({id,k:(have[id]||0)+Math.random()})).sort((x,y)=>x.k-y.k).forEach((o,i)=>need[o.id]=c+(i<ex?1:0));
+  /* historial ya jugado: para evitar repetir parejas y rivales */
+  if(pre&&pre.done)pre.done.forEach(x=>{pt[key(...x.a)]=(pt[key(...x.a)]||0)+1;pt[key(...x.b)]=(pt[key(...x.b)]||0)+1;
+    x.a.forEach(u=>x.b.forEach(v=>op[key(u,v)]=(op[key(u,v)]||0)+1));
+    const q=[...x.a,...x.b].sort((u,v)=>u-v).join();qd[q]=(qd[q]||0)+1});
   for(let i=0;i<M;i++){
     const left=M-i-1,win=new Set(),prev=new Set();
     if(courts>1)last.slice(-(courts-1)).forEach(st=>st.forEach(x=>win.add(x)));
@@ -74,9 +80,9 @@ function trialQ(ids,c,courts){
   }
   return{m,s:s+(m.length<M?1e9:0)};
 }
-function genQ(ids,c,courts){
+function genQ(ids,c,courts,pre){
   const M=Math.ceil(ids.length*c/4),T=M>40?15:40;let best=null,bs=1e18;
-  for(let t=0;t<T;t++){const r=trialQ(ids,c,courts);if(r.s<bs){bs=r.s;best=r.m}}
+  for(let t=0;t<T;t++){const r=trialQ(ids,c,courts,pre);if(r.s<bs){bs=r.s;best=r.m}}
   return best;
 }
 const active=()=>S.players.filter(p=>p.status!=='rest'&&p.status!=='out');
@@ -173,7 +179,7 @@ const bar=()=>{const t=S.matches.length,d=S.matches.filter(m=>m.status!=='pendin
 const foot=()=>`<p class="mut foot">Plataforma para pickleballers creada por <a href="https://kikebarcelodg.github.io/" target="_blank" rel="noopener">Kike Barceló</a></p>`;
 function render(){
   const f={home:vHome,setup:vSetup,game:vGame,more:vMore,final:vFinal}[view];
-  $('#app').innerHTML=header()+f()+(err?`<div class="err">${esc(err)}</div>`:'')+foot();err='';if(view==='home')initPong('pong',null,true);
+  $('#app').innerHTML=header()+f()+(err?`<div class="err">${esc(err)}</div>`:'')+foot();err='';nerr='';if(view==='home')initPong('pong',null,true);
   if(msg){toast(msg);msg=''}
 }
 let PG={u:0,c:0};
@@ -251,22 +257,23 @@ function rotSummary(){
   if(!r)return'<div class="card"><h3>Resumen</h3><p class="mut">Añade al menos 4 jugadores para ver el reparto previsto.</p></div>';
   const jug=k=>k===1?'1 jugador jugará':k+' jugadores jugarán',pa=k=>k+(k===1?' partido':' partidos'),ok=!r.ex;
   return`<div class="card"><h3>Resumen</h3>
-  <p style="margin:8px 0 4px"><b>${pa(r.M)} previstos.</b> ${ok?`Todos los jugadores jugarán ${pa(r.c)}.`:`${jug(r.n-r.ex)} ${pa(r.c)} y ${r.ex===1?'1 jugará':r.ex+' jugarán'} ${r.c+1}.`}</p>
+  <div class="sl"><span class="ic">🎾</span><div><b>${pa(r.M)} previstos</b></div></div>
+  <div class="sl"><span class="ic">👥</span><div>${ok?`Todos los jugadores jugarán <b>${pa(r.c)}</b>.`:`<b>${jug(r.n-r.ex)} ${pa(r.c)}</b> y <b>${r.ex===1?'1 jugará':r.ex+' jugarán'} ${r.c+1}</b>.`}</div></div>
   ${ok?'':`<div class="err">⚠️ Reparto desigual: algunos jugadores disputarán un partido más que otros. Para igualar el reparto, prueba con ${r.up} ciclos${r.dn?` (o con ${r.dn})`:''}. Puedes empezar igualmente.</div>`}
-  <p class="mut" style="margin:6px 0 0">⏱ Duración estimada: aprox. <b>${fmtMin(r.tot)}</b> (${r.rounds} turnos de ~${Math.round(r.dur)} min + 2 min de transición, con ${r.P} partido${r.P>1?'s':''} a la vez). Es una estimación aproximada, no una garantía.</p></div>`}
+  <div class="sl"><span class="ic">⏱</span><div>Duración estimada: <b>aprox. ${fmtMin(r.tot)}</b><br><span class="mut">${r.rounds} turnos de ~${Math.round(r.dur)} min + 2 min de transición, con ${r.P} partido${r.P>1?'s':''} a la vez. Estimación aproximada, no una garantía.</span></div></div></div>`}
 function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T=Math.floor(n/2),tot=FX()?fxTotal(T):(n>=4?Math.ceil(n*c.cycles/4):0);
-  return`<h2>Prepara la quedada</h2>${modeSel()}
-  <form class="card" data-f="add"><label class="mut">Añadir jugadores (uno o varios separados por comas o líneas)</label><div class="row"><input name="n" autocomplete="off" placeholder="Nombre"><button class="btn sm fix">Añadir</button></div></form>
-  <div class="card">${n?S.players.map(p=>`<div class="row" style="margin:6px 0"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><button class="btn sm red fix" data-del="${p.id}" aria-label="Eliminar ${esc(p.name)}">✕</button></div>`).join(''):'<p class="mut">Aún no hay jugadores. Añade al menos 4 para empezar.</p>'}</div>
+  return`<h2>Prepara la quedada</h2><p class="lead">Añade a los jugadores y ajusta pistas, puntos${FX()?'':' y ciclos'}.</p>${modeSel()}
+  <form class="card" data-f="add"><label class="mut">Añadir jugadores (uno o varios separados por comas o líneas)</label><div class="row"><input name="n" autocomplete="off" placeholder="Nombre"><button class="btn sm fix">Añadir</button></div>${nameErrBox()}</form>
+  <div class="card">${n?S.players.map(p=>`<div class="row" style="margin:6px 0"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><button class="btn sm red fix" data-del="${p.id}" aria-label="Eliminar ${esc(p.name)}">✕</button></div>`).join(''):'<div class="empty">👥<br><b>Aún no hay jugadores</b><br>Añade al menos 4 para empezar.</div>'}</div>
   ${pairsCard()}
-  <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="10" value="${c.cycles}" data-set="cycles"></label>`}</div></div>
+  <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="10" value="${c.cycles}" data-set="cycles"></label>`}</div>${FX()?'':'<p class="hint">🔁 <b>Ciclos</b> = partidos que juega cada persona.</p>'}</div>
   ${FX()?fxFlow():rotSummary()}
-  <div class="ok"><b>${n} jugadores</b> · ${FX()?'':c.cycles+' ciclos · '}<b>${tot} partidos previstos</b><br><span class="mut">Planificación orientativa: no garantiza el mismo descanso para todos.</span></div>
+  <div class="ok"><div class="stats"><div class="stat"><b>${n}</b><span>jugadores</span></div>${FX()?'':`<div class="stat"><b>${c.cycles}</b><span>ciclos</span></div>`}<div class="stat"><b>${tot}</b><span>partidos previstos</span></div></div><p class="mut" style="margin:8px 0 0">ℹ️ Planificación orientativa: no garantiza el mismo descanso para todos.</p></div>
   <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar calendario</button>
   <button class="btn ghost" data-a="home">Volver</button>`}
 function vGame(){
   const lv=live(),em=ed&&S.matches.find(x=>x.id===ed),m=em||lv.find(x=>x.court===ct)||lv[0];if(m&&!em)ct=m.court;
-  if(!m)return`<div class="logo">¡FIN!</div><p class="sub">No quedan partidos pendientes.</p><button class="btn ball" data-a="final">Ver resumen final</button>${FX()?'':'<button class="btn ghost" data-a="extra">Añadir otro ciclo</button>'}<nav><button class="btn ghost sm" data-a="more">Jugadores</button></nav>`;
+  if(!m)return`<div class="logo">¡FIN!</div><div class="note tip"><b>🎉 No quedan partidos pendientes.</b><br>Mira el resumen final o empieza una nueva quedada.</div><button class="btn ball" data-a="final">Ver resumen final</button>${S.started&&S.matches.length?'<button class="btn ghost" data-a="repeat">Repetir con los mismos jugadores</button><button class="btn red" data-a="reset">Nueva quedada (borra todo)</button>':''}<nav><button class="btn ghost sm" data-a="more">Jugadores</button></nav>`;
   tmp=SC[m.id]||(SC[m.id]={id:m.id,a:m.sa??0,b:m.sb??0});
   const idx=S.matches.indexOf(m)+1,nx=pending().find(x=>x!==m&&!lv.includes(x)),
   ctabs=!em&&lv.length>1?`<div class="ctabs" role="tablist" aria-label="Pistas en juego">${lv.map(x=>{const t=SC[x.id];return`<button role="tab" data-ct="${x.court}" aria-selected="${x===m}"><b>Pista ${x.court}</b><small>${t&&(t.a||t.b)?t.a+' - '+t.b:'en juego'}</small></button>`}).join('')}</div>`:'',tm=(t,c,l)=>`<div class="team ${c}"><div class="mut" style="color:#fff">${l}</div><div class="n">${t.map(i=>esc(nameOf(i))).join('<br>')}</div><div class="sc"><button data-sc="${c}-1" aria-label="Restar">−</button><output>${tmp[c]}</output><button data-sc="${c}1" aria-label="Sumar">+</button></div></div>`;
@@ -275,16 +282,16 @@ function vGame(){
   <button class="btn ball" data-a="ok">${m.status==='done'?'Guardar corrección':'Confirmar resultado'}</button>
   <div class="row">${m.ph==='ko'?'':'<button class="btn ghost" data-a="skip">Saltar partido</button>'}${m.status==='done'?'<button class="btn ghost" data-a="cancel">Cancelar</button>':''}</div>
   ${nx?`<div class="card pend"><span class="mut">${lv.length>1?'En cola:':'Después:'}</span><br><b>${nx.a.map(nameOf).map(esc).join(' y ')}</b> vs <b>${nx.b.map(nameOf).map(esc).join(' y ')}</b></div>`:''}
-  ${!em&&nx&&lv.length<S.settings.courts?'<p class="mut">Hay una pista libre: el siguiente partido necesita a jugadores que todavía están en pista. Empezará cuando terminen.</p>':''}
+  ${!em&&nx&&lv.length<S.settings.courts?'<div class="note">⏳ <b>Hay una pista libre:</b> el siguiente partido necesita a jugadores que todavía están en pista. Empezará cuando terminen.</div>':''}
   ${FX()?fxFlow():''}
   <nav><button class="btn ghost sm" data-a="more">Jugadores</button></nav>`}
 function vMore(){
   const done=S.matches.filter(m=>m.status!=='pending');
-  return`<h2>Jugadores</h2><p class="mut">${FX()?'Parejas fijas: aquí puedes corregir nombres y resultados.':'Cualquier cambio recalcula solo los partidos pendientes.'}</p>
+  return`<h2>Jugadores</h2><div class="note">${FX()?'✏️ <b>Parejas fijas:</b> aquí puedes corregir nombres y resultados.':'🔄 <b>Cualquier cambio</b> recalcula solo los partidos pendientes.'}</div>
   ${FX()?fxMore():`<div class="card">${S.players.map(p=>`<div style="margin:10px 0"><div class="row"><input value="${esc(p.name)}" data-ren="${p.id}" aria-label="Nombre"><span class="tag fix">${{rest:'Descansa',out:'Se marcha'}[p.status]||'Juega'}</span></div>
   <button class="btn sm ghost" data-st="${p.id}-rest">${p.status==='rest'?'Vuelve':'Descansa'}</button><button class="btn sm ghost" data-st="${p.id}-out">${p.status==='out'?'Ha vuelto / llega':'Se marcha'}</button><button class="btn sm red" data-pd="${p.id}">Quitar</button></div>`).join('')}
-  <form data-f="addlive" class="row"><input name="n" placeholder="Nueva persona" autocomplete="off"><button class="btn sm fix">Añadir</button></form></div>`}
-  <div class="card"><h3>Resultados</h3>${done.length?done.map(m=>`<div class="row" style="margin:6px 0"><span>${S.matches.indexOf(m)+1}. ${m.a.map(nameOf).map(esc).join('/')} <b>${m.status==='done'?m.sa+'-'+m.sb:''}</b> ${m.b.map(nameOf).map(esc).join('/')} ${m.status==='skipped'?'<span class="tag s">no disputado</span>':''}</span><button class="btn sm ghost fix" data-edit="${m.id}">Editar</button></div>`).join(''):'<p class="mut">Todavía no hay partidos resueltos.</p>'}</div>
+  <form data-f="addlive" class="row"><input name="n" placeholder="Nueva persona" autocomplete="off"><button class="btn sm fix">Añadir</button></form>${nameErrBox()}</div>`}
+  <div class="card"><h3>Resultados</h3>${done.length?done.map(m=>`<div class="row" style="margin:6px 0"><span>${S.matches.indexOf(m)+1}. ${m.a.map(nameOf).map(esc).join('/')} <b>${m.status==='done'?m.sa+'-'+m.sb:''}</b> ${m.b.map(nameOf).map(esc).join('/')} ${m.status==='skipped'?'<span class="tag s">no disputado</span>':''}</span><button class="btn sm ghost fix" data-edit="${m.id}">Editar</button></div>`).join(''):'<div class="empty">🏓<br>Todavía no hay partidos resueltos.</div>'}</div>
   <button class="btn ball" data-a="final">Ver resumen final</button>
   <button class="btn ghost" data-a="repeat">Repetir con los mismos jugadores</button>
   <button class="btn red" data-a="reset">Nueva quedada (borra todo)</button>
@@ -308,12 +315,12 @@ function podium(rows){
 function vFinal(){
   const{rows,dn,top,aw,names}=summary(),share=!!(navigator.canShare&&typeof File==='function'&&navigator.canShare({files:[new File([''],'a.jpg',{type:'image/jpeg'})]}));
   return`<h2>Resumen</h2>
-  ${top.length?`<div class="card" style="background:var(--ball)"><div class="mut" style="color:var(--ink)">${top.length>1?'Ganadores (empate)':'Ganador/a'}</div><div class="big">🏆 ${esc(names(top))}</div><div>${top[0].w} victorias · diferencia de puntos ${sg(top[0].pf-top[0].pa)}</div></div>`:'<p class="mut">El ganador aparecerá cuando haya resultados.</p>'}
+  ${top.length?`<div class="card" style="background:var(--ball)"><div class="mut" style="color:var(--ink)">${top.length>1?'Ganadores (empate)':'Ganador/a'}</div><div class="big">🏆 ${esc(names(top))}</div><div>${top[0].w} victorias · diferencia de puntos ${sg(top[0].pf-top[0].pa)}</div></div>`:'<div class="note">⏳ El ganador aparecerá cuando haya resultados.</div>'}
   ${podium(rows)}
   <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>${FX()?'Pareja':'Jugador'}</th><th>Victorias</th><th>Derrotas</th><th>Dif.</th><th>${FX()?'PJ':'Compañeros'}</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}</td><td>${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${FX()?s.g:s.pt.size}</td></tr>`).join('')}</table>
-  <p class="mut">${FX()?'Parejas fijas: fase de grupos y eliminatorias. El orden final lo decide la eliminatoria; el resto, por victorias y diferencia de puntos.':'Todos juegan los mismos partidos con parejas distintas. Gana quien más victorias suma; si hay empate, decide la diferencia de puntos (puntos a favor menos en contra).'}</p></div>
+  <div class="note">${FX()?'<b>🏆 Parejas fijas:</b> fase de grupos y eliminatorias. El orden final lo decide la eliminatoria; el resto, por <b>victorias</b> y <b>diferencia de puntos</b>.':'<b>🏆 Cómo se decide:</b> gana quien tiene mayor <b>porcentaje de victorias</b>. Si hay empate, decide la <b>diferencia de puntos</b> (a favor menos en contra). Todos juegan el mismo número de partidos, o uno de diferencia, con parejas distintas.'}</div></div>
   ${aw.map(a=>`<div class="ok"><b>🏅 ${a[0]}</b><br>${esc(a[1])}</div>`).join('')}
-  ${dn.length?`<button class="btn ball" data-a="story">Descargar imagen para Stories (JPG)</button>${share?'<button class="btn ghost" data-a="storyshare">Compartir imagen…</button>':''}`:''}
+  ${dn.length?`<button class="btn ball" data-a="story">Descargar imagen de ranking</button>${share?'<button class="btn ghost" data-a="storyshare">Compartir imagen…</button>':''}`:''}
   ${S.started&&S.matches.length&&!pending().length?'<button class="btn ghost" data-a="repeat">Repetir con los mismos jugadores</button><button class="btn red" data-a="reset">Nueva quedada (borra todo)</button>':''}
   <button class="btn ghost" data-a="${S.started?'go':'home'}">Volver</button>`}
 
@@ -328,9 +335,11 @@ function storyCanvas(){
   x.fillStyle='#eef3f8';x.fillRect(0,0,W,H);
   /* cabecera como la barra superior de la app */
   rr(0,-60,W,440,60,NAVY);
-  x.save();x.translate(64,232);x.textBaseline='alphabetic';x.font=`900 92px ${HF}`;x.fillStyle='#fff';x.fillText('PICKLE',0,0);
-  const w1=x.measureText('PICKLE').width;x.font=`900 92px ${HF}`;const w2=x.measureText('&MIX').width;
-  x.save();x.translate(w1+10+w2/2,-32);x.rotate(.05);rr(-w2/2-14,-70,w2+28,104,24,LIME);x.fillStyle=INK;x.textAlign='center';x.fillText('&MIX',0,0);x.restore();x.restore();
+  x.save();x.translate(64,232);x.textBaseline='alphabetic';x.textAlign='left';x.font=`900 92px ${HF}`;x.fillStyle='#fff';x.fillText('PICKLE',0,0);
+  /* recuadro de &MIX: se mide la tinta real del texto para centrarlo en el recuadro (misma línea base que PICKLE) */
+  const w1=x.measureText('PICKLE').width,tm=x.measureText('&MIX'),asc=tm.actualBoundingBoxAscent,dsc=tm.actualBoundingBoxDescent,
+    abl=tm.actualBoundingBoxLeft,abr=tm.actualBoundingBoxRight,bw=abl+abr+48,bh=asc+dsc+44;
+  x.save();x.translate(w1+16+bw/2,(dsc-asc)/2);x.rotate(.05);rr(-bw/2,-bh/2,bw,bh,24,LIME);x.fillStyle=INK;x.fillText('&MIX',(abl-abr)/2,(asc-dsc)/2);x.restore();x.restore();
   x.textAlign='left';x.fillStyle='rgba(255,255,255,.85)';x.font=`700 34px ${BF}`;
   x.fillText('RESUMEN FINAL · '+new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}).toUpperCase(),64,306);
   let y=420;
@@ -391,8 +400,12 @@ function storyBlob(){return new Promise(res=>storyCanvas().toBlob(res,'image/jpe
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),3200)}
 
 /* ---------- Acciones ---------- */
-function addNames(txt){const names=txt.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
-  names.forEach(n=>S.players.push({id:S.nid++,name:n.slice(0,24),status:'active'}));return names.length}
+/* Nombres únicos: se comparan sin distinguir mayúsculas, tildes ni espacios sobrantes (Alicia = alicia = Álicia) */
+const normName=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+const nameTaken=(n,except)=>S.players.some(p=>p.id!==except&&normName(p.name)===normName(n));
+function addNames(txt){const names=txt.split(/[\n,;]+/).map(s=>s.trim().slice(0,24).trim()).filter(Boolean),dups=[];let added=0;
+  names.forEach(n=>{if(nameTaken(n)){if(!dups.includes(n))dups.push(n);return}S.players.push({id:S.nid++,name:n,status:'active'});added++});return{added,dups}}
+const dupMsg=(dups,added)=>(dups.length===1?`«${dups[0]}» ya existe. Usa un nombre distinto, por ejemplo «${dups[0]} A» o una abreviatura.`:`Ya existen: ${dups.map(d=>`«${d}»`).join(', ')}. Usa nombres distintos, por ejemplo añadiendo una inicial.`)+(added?' El resto se ha añadido.':'');
 function replan(why){const n=pending().length;rebuild(n);save();msg=why+' Planificación de partidos pendientes actualizada.'}
 const A={
   play(){if($('#ov'))return;const o=document.createElement('div');o.id='ov';o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
@@ -411,7 +424,14 @@ const A={
       S.teams=pr.map((p,i)=>({id:i+1,p}));fxBuild()}
     else{const nm=genQ(S.players.map(p=>p.id),c.cycles,c.courts);nm.forEach(m=>m.id=S.nid++);S.matches=nm}
     S.started=true;SC={};ed=null;ct=1;view='game'},
-  extra(){if(FX())return;rebuild(pending().length+Math.floor(active().length/4));ed=null;view='game'},
+  /* Otro ciclo = un partido más para cada jugador activo (los puestos sobrantes, a quien menos ha jugado) */
+  extra(){if(FX())return;const ids=active().map(p=>p.id);
+    if(ids.length<4){err='Necesitas al menos 4 jugadores activos para añadir otro ciclo.';return}
+    const have={};S.matches.filter(m=>m.status!=='skipped').forEach(m=>[...m.a,...m.b].forEach(i=>have[i]=(have[i]||0)+1));
+    const nm=genQ(ids,1,S.settings.courts,{have,done:S.matches.filter(m=>m.status==='done')}),
+      cyc=Math.max(0,...S.matches.map(m=>m.cycle||0))+1,base=S.matches.length;
+    nm.forEach((m,i)=>{m.id=S.nid++;m.cycle=cyc;m.court=(base+i)%S.settings.courts+1});
+    S.matches=S.matches.concat(nm);ed=null;view='game'},
   ok(){const m=S.matches.find(x=>x.id===tmp.id),p=S.settings.points,{a,b}=tmp;
     if(a===b||Math.max(a,b)<p){err=`El ganador debe llegar al menos a ${p} puntos y no puede haber empate.`;return}
     m.sa=a;m.sb=b;m.status='done';delete SC[m.id];ed=null;tmp=null;view='game';fxAdvance()},
@@ -436,10 +456,16 @@ document.addEventListener('click',e=>{
   save();render();
 });
 document.addEventListener('submit',e=>{e.preventDefault();const f=e.target.dataset.f,v=e.target.n.value;if(!v.trim())return;
-  addNames(v);if(f==='addlive')replan('Jugador añadido.');save();render()});
+  const r=addNames(v);if(r.added&&f==='addlive')replan('Jugador añadido.');
+  if(r.dups.length)nerr=dupMsg(r.dups,r.added);
+  save();render();
+  /* los nombres rechazados se quedan en el cuadro para poder corregirlos */
+  if(r.dups.length){const i=document.querySelector(`form[data-f="${f}"] input[name="n"]`);if(i){i.value=r.dups.join(', ');i.focus();i.select()}}});
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.dr){const[i,j]=t.dataset.dr.split('-').map(Number);S.draft[i][j]=+t.value;save();render();return}
-  if(t.dataset.ren){const p=S.players.find(x=>x.id==t.dataset.ren);if(t.value.trim())p.name=t.value.trim().slice(0,24);save();return}
+  if(t.dataset.ren){const p=S.players.find(x=>x.id==t.dataset.ren),nv=t.value.trim().slice(0,24).trim();
+    if(nv&&nameTaken(nv,p.id)){t.value=p.name;toast(`«${nv}» ya existe. Usa un nombre distinto, por ejemplo «${nv} A».`);return}
+    if(nv)p.name=nv;save();return}
   if(t.dataset.set){const k=t.dataset.set,v=Math.max(1,Math.min(+t.max,parseInt(t.value)||1));S.settings[k]=v;save();render();return}
 });
 if(typeof document!=='undefined'&&document.getElementById('app'))render();
