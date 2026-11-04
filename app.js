@@ -236,11 +236,19 @@ function header(){
   const t=S.started?[['home','Inicio'],['go','Partido'],['more','Jugadores'],['final','Resumen']]:[['home','Inicio'],['setup','Preparar'],['final','Resumen']];
   const cur={home:'home',game:'go',more:'more',final:'final',setup:'setup'}[view];
   return`<header class="top"><div class="mark">PICKLE<b>&amp;MIX</b></div><nav class="tabs" aria-label="Acceso rápido">${t.map(x=>`<button data-a="${x[0]}"${x[0]===cur?' aria-current="page"':''}>${x[1]}</button>`).join('')}</nav></header>`}
+const GT={
+pong:`<svg viewBox="0 0 160 96" aria-hidden="true"><rect width="160" height="96" fill="#2f6fbd"/><rect x="6" y="6" width="148" height="84" rx="4" fill="none" stroke="#fff" stroke-width="2" opacity=".8"/><path d="M6 48H154" stroke="#fff" stroke-width="2" stroke-dasharray="6 5" opacity=".8"/><rect x="56" y="12" width="46" height="8" rx="4" fill="#ff6a4d"/><rect x="66" y="76" width="46" height="8" rx="4" fill="#fff"/><circle cx="84" cy="62" r="4" fill="#d4f53c" opacity=".35"/><circle cx="92" cy="54" r="7" fill="#d4f53c" stroke="#0e1c33" stroke-width="2"/></svg>`,
+kitchen:`<svg viewBox="0 0 160 96" aria-hidden="true"><rect width="160" height="96" fill="#12325e"/><polygon points="44,10 116,10 148,90 12,90" fill="#2f7bff" stroke="#fff" stroke-width="2"/><polygon points="31,56 129,56 140,78 20,78" fill="#d4f53c" opacity=".35"/><path d="M80 10V56M80 78V90" stroke="#fff" stroke-width="2"/><rect x="26" y="40" width="108" height="9" rx="3" fill="#0e1c33" opacity=".7"/><rect x="24" y="38" width="112" height="3" rx="1.5" fill="#fff"/><circle cx="98" cy="68" r="7" fill="#d4f53c" stroke="#0e1c33" stroke-width="2"/></svg>`,
+dink:`<svg viewBox="0 0 160 96" aria-hidden="true"><rect width="160" height="96" fill="#12325e"/><rect x="48" y="6" width="64" height="84" rx="4" fill="#2f6fbd" stroke="#fff" stroke-width="2"/><rect x="48" y="40" width="64" height="26" fill="#4a8fe0"/><path d="M42 52H118" stroke="#0e1c33" stroke-width="5" stroke-linecap="round"/><path d="M42 52H118" stroke="#fff" stroke-width="2" stroke-dasharray="3 3"/><circle cx="88" cy="22" r="15" fill="#fff" stroke="#ff6a4d" stroke-width="3"/><circle cx="88" cy="22" r="8" fill="#ff6a4d"/><circle cx="88" cy="22" r="3.4" fill="#f8e81c"/><path d="M70 80Q62 52 86 28" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/><circle cx="70" cy="80" r="6" fill="#d4f53c" stroke="#0e1c33" stroke-width="2"/></svg>`,
+pairs:`<svg viewBox="0 0 160 96" aria-hidden="true"><rect width="160" height="96" fill="#12325e"/><g stroke="#fff" stroke-opacity=".3" stroke-width="2"><rect x="25" y="12" width="30" height="34" rx="6" fill="#2a62ad"/><rect x="105" y="12" width="30" height="34" rx="6" fill="#2a62ad"/><rect x="65" y="54" width="30" height="34" rx="6" fill="#2a62ad"/><rect x="105" y="54" width="30" height="34" rx="6" fill="#2a62ad"/></g><g fill="#d4f53c"><circle cx="40" cy="29" r="5"/><circle cx="120" cy="29" r="5"/><circle cx="80" cy="71" r="5"/><circle cx="120" cy="71" r="5"/></g><g fill="#fff" stroke="#d4f53c" stroke-width="2.5"><rect x="65" y="12" width="30" height="34" rx="6"/><rect x="25" y="54" width="30" height="34" rx="6"/></g><g fill="#f8e81c" stroke="#0e1c33" stroke-width="2"><circle cx="80" cy="29" r="10"/><circle cx="40" cy="71" r="10"/></g></svg>`};
+const GM=[['pong','Pong','Duelo contra el ordenador a 7 puntos','play'],['kitchen','Kitchen Rush','Reflejos: espera el bote en la Kitchen','kitchen'],['dink','Dink Shot','Puntería: apunta a la diana con viento','dink'],['pairs','Pickle Pairs','Memoria: encuentra las parejas, de 1 a 4 jugadores','pairs']];
+const gamesGrid=()=>`<h2 class="gt">Minijuegos</h2><p class="lead">Para pasar el rato mientras te toca descansar.</p><div class="games">${GM.map(g=>`<button class="gc" data-a="${g[3]}" aria-label="Jugar a ${g[1]}"><span class="th">${GT[g[0]]}</span><span class="tx"><b>${g[1]}</b><span>${g[2]}</span></span></button>`).join('')}</div>`;
 function vHome(){const n=S.players.length,c=S.settings;
-  return`<div class="banner"><canvas id="pong" aria-hidden="true"></canvas></div><button class="btn ball" data-a="play">JUGAR</button><p class="sub tagline">Elige tu modo de juego, disfruta con tus amigos y consigue <b>tu ranking</b> automáticamente</p>
+  return`<p class="sub tagline">Elige tu modo de juego, disfruta con tus amigos y consigue <b>tu ranking</b> automáticamente</p>
   <div class="card"><div class="big">${n}</div><div>jugadores inscritos</div><div class="chips" style="margin-top:12px"><span class="chip">${c.courts} pista${c.courts>1?'s':''}</span><span class="chip">a ${c.points} puntos</span>${FX()?'':`<span class="chip">${c.cycles} ciclos</span>`}<span class="chip">${FX()?'grupos + eliminatorias':'parejas rotatorias'}</span></div></div>
   ${S.started?'<button class="btn ball" data-a="go">Continuar la quedada</button>':''}
-  <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button>`}
+  <button class="btn ghost" data-a="${S.started?'more':'setup'}">Gestionar participantes</button>
+  ${gamesGrid()}`}
 /* Resumen del modo rotatorio: reparto por jugador y duración estimada (valores medios orientativos) */
 const CMAX=20; /* máximo de ciclos (partidos por jugador) que admite el campo «Ciclos» */
 const DUR={7:11,9:14,11:18,15:25};
@@ -461,11 +469,21 @@ function scoreStep(t,c,v,P){
   if(!okState(a,b,P))return{ok:false,msg:v>0?`Máximo ${P} puntos. Solo se puede pasar de ${P} si hay empate a ${P-1} o más (ganar por 2).`:`Antes de bajar esta puntuación, resta puntos al otro equipo (no puede haber más de 2 de diferencia por encima de ${P}).`};
   return{ok:true,val:n}}
 function replan(why){const n=pending().length;rebuild(n);save();msg=why+' Planificación de partidos pendientes actualizada.'}
+/* Minijuegos: cada HTML vive en index.html (<script type="text/plain" id="g-...">) y se abre a pantalla completa dentro de un iframe aislado */
+const GN={kitchen:'Kitchen Rush',dink:'Dink Shot',pairs:'Pickle Pairs'};
+function openGame(id){if($('#ov'))return;const src=document.getElementById('g-'+id);if(!src)return;
+  const o=document.createElement('div');o.id='ov';o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');o.setAttribute('aria-label',GN[id]);
+  o.innerHTML=`<div class="ovh"><span>${GN[id]}</span><button class="btn sm red" data-a="closeg">Cerrar ✕</button></div><iframe title="${GN[id]}" allow="autoplay"></iframe>`;
+  const f=o.querySelector('iframe');
+  f.addEventListener('load',()=>{try{const w=f.contentWindow;w.addEventListener('keydown',e=>{if(e.key==='Escape')A.closeg()});w.focus()}catch(e){}});
+  f.srcdoc=src.textContent.split('<\\/script>').join('</script>');
+  document.body.appendChild(o);document.body.style.overflow='hidden'}
 const A={
   play(){if($('#ov'))return;const o=document.createElement('div');o.id='ov';o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
     o.innerHTML='<div class="ovh"><span>Pong de PICKLE&amp;MIX</span><button class="btn sm red" data-a="closeg">Cerrar ✕</button></div><canvas id="pong2"></canvas><p id="phint2"></p>';
     document.body.appendChild(o);document.body.style.overflow='hidden';initPong('pong2','phint2')},
   closeg(){const o=$('#ov');if(o)o.remove();document.body.style.overflow=''},
+  kitchen(){openGame('kitchen')},dink(){openGame('dink')},pairs(){openGame('pairs')},
   setup(){view='setup'},home(){view='home'},go(){view='game';ed=null},more(){view='more'},final(){view='final'},
   start(){const c=S.settings;if(S.players.length<4){err='Necesitas al menos 4 jugadores.';return}
     if(S.players.length<4*c.courts){err=`Con ${c.courts} pistas necesitas al menos ${4*c.courts} jugadores.`;return}
