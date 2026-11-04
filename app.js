@@ -451,6 +451,15 @@ const nameTaken=(n,except)=>S.players.some(p=>p.id!==except&&normName(p.name)===
 function addNames(txt){const names=txt.split(/[\n,;]+/).map(s=>s.trim().slice(0,24).trim()).filter(Boolean),dups=[];let added=0;
   names.forEach(n=>{if(nameTaken(n)){if(!dups.includes(n))dups.push(n);return}S.players.push({id:S.nid++,name:n,status:'active'});added++});return{added,dups}}
 const dupMsg=(dups,added)=>(dups.length===1?`«${dups[0]}» ya existe. Usa un nombre distinto, por ejemplo «${dups[0]} A» o una abreviatura.`:`Ya existen: ${dups.map(d=>`«${d}»`).join(', ')}. Usa nombres distintos, por ejemplo añadiendo una inicial.`)+(added?' El resto se ha añadido.':'');
+/* Límite de puntos: nadie puede pasar de P, salvo en el desempate por diferencia de 2 (p. ej. a 9: 10-8, 11-9, 12-10…) */
+const okState=(a,b,P)=>Math.max(a,b)<=P||Math.abs(a-b)<=2;
+function scoreStep(t,c,v,P){
+  const o=c==='a'?'b':'a',s=t[c],n=s+v;
+  if(n<0)return{ok:false,msg:'La puntuación no puede ser negativa.'};
+  if(v>0&&s>=P&&s-t[o]>=2)return{ok:false,msg:`Partido decidido: ya se ha llegado a ${P} con 2 de ventaja.`};
+  const a=c==='a'?n:t.a,b=c==='b'?n:t.b;
+  if(!okState(a,b,P))return{ok:false,msg:v>0?`Máximo ${P} puntos. Solo se puede pasar de ${P} si hay empate a ${P-1} o más (ganar por 2).`:`Antes de bajar esta puntuación, resta puntos al otro equipo (no puede haber más de 2 de diferencia por encima de ${P}).`};
+  return{ok:true,val:n}}
 function replan(why){const n=pending().length;rebuild(n);save();msg=why+' Planificación de partidos pendientes actualizada.'}
 const A={
   play(){if($('#ov'))return;const o=document.createElement('div');o.id='ov';o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
@@ -479,6 +488,8 @@ const A={
     S.matches=S.matches.concat(nm);ed=null;view='game'},
   ok(){const m=S.matches.find(x=>x.id===tmp.id),p=S.settings.points,{a,b}=tmp;
     if(a===b||Math.max(a,b)<p){err=`El ganador debe llegar al menos a ${p} puntos y no puede haber empate.`;return}
+    if(!okState(a,b,p)){err=`Marcador no válido: no se puede pasar de ${p} puntos salvo para ganar por 2 de diferencia.`;return}
+    if(Math.abs(a-b)<2){err='Hay que ganar por diferencia de 2 puntos. Sigue jugando hasta que haya 2 de ventaja.';return}
     m.sa=a;m.sb=b;m.status='done';delete SC[m.id];ed=null;tmp=null;view='game';fxAdvance()},
   skip(){if(!confirm('¿Marcar este partido como no disputado?'))return;const m=S.matches.find(x=>x.id===tmp.id);m.status='skipped';m.sa=m.sb=null;delete SC[m.id];ed=null;tmp=null;fxAdvance()},
   cancel(){if(tmp)delete SC[tmp.id];ed=null;tmp=null},
@@ -490,7 +501,7 @@ const A={
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-a],[data-sc],[data-ct],[data-del],[data-st],[data-pd],[data-edit],[data-mode],[data-pm]');if(!t)return;const d=t.dataset;
   if(d.a)A[d.a]();
-  else if(d.sc){const c=d.sc[0],v=+d.sc.slice(1);tmp[c]=Math.max(0,Math.min(99,tmp[c]+v));$('#app').innerHTML=header()+vGame()+foot();return}
+  else if(d.sc){const c=d.sc[0],v=+d.sc.slice(1),r=scoreStep(tmp,c,v,S.settings.points);if(r.ok)tmp[c]=r.val;else toast(r.msg);$('#app').innerHTML=header()+vGame()+foot();return}
   else if(d.ct){ct=+d.ct;ed=null}
   else if(d.mode)S.settings.mode=d.mode;
   else if(d.pm)S.settings.pairing=d.pm;
