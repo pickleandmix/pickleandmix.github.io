@@ -1,9 +1,9 @@
 'use strict';
 const K='pickleMix.v1',$=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fresh=()=>({players:[],settings:{courts:1,points:7,cycles:3,mode:'rot',pairing:'random'},matches:[],started:false,nid:1,teams:[],draft:[]});
+const fresh=()=>({players:[],settings:{courts:1,points:11,cycles:3,mode:'rot',pairing:'random'},matches:[],started:false,nid:1,teams:[],draft:[]});
 function valid(d){return d&&Array.isArray(d.players)&&Array.isArray(d.matches)&&d.settings&&d.players.every(p=>p&&typeof p.id=='number'&&typeof p.name=='string')&&d.matches.every(m=>m&&Array.isArray(m.a)&&Array.isArray(m.b)&&m.a.length==2&&m.b.length==2&&['pending','done','skipped'].includes(m.status))&&(d.settings.mode!=='fixed'||Array.isArray(d.teams))&&['courts','points','cycles'].every(k=>Number.isInteger(d.settings[k])&&d.settings[k]>0)}
-let S=fresh();try{const d=JSON.parse(localStorage.getItem(K));if(valid(d))S=d}catch(e){}
+let S=fresh();try{const d=JSON.parse(localStorage.getItem(K));if(valid(d)){S=d;if(!S.started&&S.settings.points===7)S.settings.points=11}}catch(e){}
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 let view=S.started?'game':'home',tmp=null,msg='',err='',nerr='',ed=null,ct=1,SC={};
 const nameErrBox=()=>nerr?`<div class="err">${esc(nerr)}</div>`:'';
@@ -152,7 +152,7 @@ const fxTotal=T=>{const{G,Q}=fxPlan(T);let t=Q?Q-1:0;for(let g=0;g<G;g++){const 
 function ensureDraft(){const T=Math.floor(S.players.length/2),ids=new Set(S.players.map(p=>p.id));
   S.draft=(S.draft||[]).slice(0,T).map(r=>r.map(i=>ids.has(i)?i:0));while(S.draft.length<T)S.draft.push([0,0])}
 const modeSel=()=>{const m=S.settings,b=(k,cur,v,t,sub)=>`<button data-${k}="${v}" aria-selected="${cur===v}"><b>${t}</b><small>${sub}</small></button>`;
-  return`<div class="ctabs" role="tablist" aria-label="Tipo de juego">${b('mode',m.mode||'rot','rot','Rotatorio','individual')}${b('mode',m.mode||'rot','fixed','Parejas fijas','por pareja')}</div>`
+  return`<div class="ctabs" role="tablist" aria-label="Tipo de juego">${b('mode',m.mode||'rot','rot','Parejas rotatorias','Ranking individual')}${b('mode',m.mode||'rot','fixed','Parejas fijas','Ranking por pareja')}</div>`
   +(FX()?`<div class="ctabs" role="tablist" aria-label="Formación de parejas">${b('pm',m.pairing||'random','random','Aleatorias','sorteo')}${b('pm',m.pairing||'random','manual','Manuales','las eliges tú')}</div>`:'')};
 const pairsCard=()=>{if(!FX()||S.settings.pairing!=='manual')return'';ensureDraft();const used=new Set(S.draft.flat());
   const sel=(i,j)=>`<select data-dr="${i}-${j}" aria-label="Pareja ${i+1}, jugador ${j+1}"><option value="0">—</option>${S.players.filter(p=>p.id===S.draft[i][j]||!used.has(p.id)).map(p=>`<option value="${p.id}"${p.id===S.draft[i][j]?' selected':''}>${esc(p.name)}</option>`).join('')}</select>`;
@@ -279,7 +279,7 @@ function vSetup(){const c=S.settings,n=S.players.length,per=Math.floor(n/4)||0,T
   <div class="card"><div class="row"><label>Pistas<input type="number" min="1" max="4" value="${c.courts}" data-set="courts"></label><label>Puntos<input type="number" min="3" max="21" value="${c.points}" data-set="points"></label>${FX()?'':`<label>Ciclos<input type="number" min="1" max="${CMAX}" value="${c.cycles}" data-set="cycles"></label>`}</div>${FX()?'':'<p class="hint">🔁 <b>Ciclos</b> = partidos que juega cada persona.</p>'}</div>
   ${FX()?fxFlow():rotSummary()}
   <div class="ok"><div class="stats"><div class="stat"><b>${n}</b><span>jugadores</span></div>${FX()?'':`<div class="stat"><b>${c.cycles}</b><span>ciclos</span></div>`}<div class="stat"><b>${tot}</b><span>partidos previstos</span></div></div><p class="mut" style="margin:8px 0 0">ℹ️ Planificación orientativa: no garantiza el mismo descanso para todos.</p></div>
-  <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar calendario</button>
+  <button class="btn ball" data-a="start" ${n<4?'disabled':''}>Generar partidos</button>
   <button class="btn ghost" data-a="home">Volver</button>`}
 function vGame(){
   const lv=live(),em=ed&&S.matches.find(x=>x.id===ed),m=em||lv.find(x=>x.court===ct)||lv[0];if(m&&!em)ct=m.court;
