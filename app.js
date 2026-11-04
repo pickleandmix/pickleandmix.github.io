@@ -135,7 +135,7 @@ function fxAdvance(){
   pairs.forEach(([x,y])=>fxMk(x,y,{ph:'ko',ko:n,lbl:KOL[n]}));
 }
 /* Gráfico del torneo: grupos → eliminatorias */
-function fxFlow(){
+function fxFlow(fin){
   const real=S.started&&S.teams.length,T=real?S.teams.length:Math.floor(S.players.length/2);if(T<2)return'';
   const{G,Q}=fxPlan(T),nm=t=>t.p.map(nameOf).join(' / ');let gr='';
   if(real){const st=stats();gr=Array.from({length:G},(_,g)=>{const l=st.filter(s=>(S.teams.find(t=>t.id===s.p.id).g||0)===g).sort((x,y)=>rate(y)-rate(x)||dif(y)-dif(x));
@@ -143,9 +143,10 @@ function fxFlow(){
   else gr=Array.from({length:G},(_,g)=>{const z=Math.floor(T/G)+(g<T%G?1:0);return`<div class="grp"><h4>${grpL(g)}</h4><div class="ln"><span>${z} parejas · todas contra todas</span></div></div>`}).join('');
   let cols='';
   for(let n=Q/2;n>=1;n/=2){const ms=S.matches.filter(m=>m.ph==='ko'&&m.ko===n),sh=t=>esc(nm(S.teams.find(x=>x.id===t)).slice(0,40));
-    cols+=`<div class="kc"><h4>${KOL[n]}${n>1?'s':''}</h4>${ms.length?ms.map(m=>`<div class="bm">${[[m.ta,m.sa,m.sa>m.sb],[m.tb,m.sb,m.sb>m.sa]].map(([t,s,w])=>`<div${m.status==='done'&&w?' class="w"':''}><span>${sh(t)}</span><b>${m.status==='done'?s:''}</b></div>`).join('')}</div>`).join(''):Array.from({length:n},()=>'<div class="bm ph"><div><span>por definir</span></div><div><span>por definir</span></div></div>').join('')}</div>`}
-  const e=Q?`<div class="fl">▶</div><div class="kc"><h4>Campeón</h4><div class="bm ph" style="text-align:center">🏆</div></div>`:'';
-  return`<div class="card"><h3>Cómo se juega el torneo</h3><p class="mut">1) Fase de grupos: cada pareja juega contra las de su grupo. ${Q?`2) Pasan las ${Q} mejores a eliminatorias directas (el que pierde, fuera).`:''}</p>
+    cols+=`<div class="kc"><h4>${{1:'Final',2:'Semifinales',4:'Cuartos'}[n]}</h4>${ms.length?ms.map(m=>`<div class="bm">${[[m.ta,m.sa,m.sa>m.sb],[m.tb,m.sb,m.sb>m.sa]].map(([t,s,w])=>`<div${m.status==='done'&&w?' class="w"':''}><span>${sh(t)}</span><b>${m.status==='done'?s:''}</b></div>`).join('')}</div>`).join(''):Array.from({length:n},()=>'<div class="bm ph"><div><span>por definir</span></div><div><span>por definir</span></div></div>').join('')}</div>`}
+  const fm=S.matches.find(m=>m.ph==='ko'&&m.ko===1&&m.status==='done'),cp=fm?S.teams.find(t=>t.id===(fm.sa>fm.sb?fm.ta:fm.tb)):null;
+  const e=Q?`<div class="fl">▶</div><div class="kc"><h4>Campeón</h4>${cp?`<div class="bm" style="text-align:center"><div class="w" style="display:block">🏆 ${esc(nm(cp).slice(0,40))}</div></div>`:'<div class="bm ph" style="text-align:center">🏆</div>'}</div>`:'';
+  return`<div class="card"><h3>${fin?'Cuadro del torneo':'Cómo se juega el torneo'}</h3><p class="mut">1) Fase de grupos: cada pareja juega contra las de su grupo. ${Q?`2) Pasan las ${Q} mejores a eliminatorias directas (el que pierde, fuera).`:''}</p>
   <div class="flow"><div class="kc"><h4>Grupos</h4>${gr}</div>${Q?`<div class="fl">▶</div>${cols}${e}`:''}</div></div>`}
 const fxTotal=T=>{const{G,Q}=fxPlan(T);let t=Q?Q-1:0;for(let g=0;g<G;g++){const z=Math.floor(T/G)+(g<T%G?1:0);t+=z*(z-1)/2}return t};
 function ensureDraft(){const T=Math.floor(S.players.length/2),ids=new Set(S.players.map(p=>p.id));
@@ -320,6 +321,7 @@ function vFinal(){
   ${podium(rows)}
   <div class="card"><b>${dn.length}</b> partidos disputados<table><tr><th>#</th><th>${FX()?'Pareja':'Jugador'}</th><th>Victorias</th><th>Derrotas</th><th>Dif.</th><th>${FX()?'PJ':'Compañeros'}</th></tr>${rows.map(s=>`<tr><td>${s.pos}</td><td>${esc(s.p.name)}</td><td>${s.w}</td><td>${s.l}</td><td>${sg(s.pf-s.pa)}</td><td>${FX()?s.g:s.pt.size}</td></tr>`).join('')}</table>
   <div class="note">${FX()?'<b>🏆 Parejas fijas:</b> fase de grupos y eliminatorias. El orden final lo decide la eliminatoria; el resto, por <b>victorias</b> y <b>diferencia de puntos</b>.':'<b>🏆 Cómo se decide:</b> gana quien tiene mayor <b>porcentaje de victorias</b>. Si hay empate, decide la <b>diferencia de puntos</b> (a favor menos en contra). Todos juegan el mismo número de partidos, o uno de diferencia, con parejas distintas.'}</div></div>
+  ${FX()&&S.started&&S.teams.length?fxFlow(true):''}
   ${aw.map(a=>`<div class="ok"><b>🏅 ${a[0]}</b><br>${esc(a[1])}</div>`).join('')}
   ${dn.length?`<button class="btn ball" data-a="story">Descargar imagen de ranking</button>${share?'<button class="btn ghost" data-a="storyshare">Compartir imagen…</button>':''}`:''}
   ${S.started&&S.matches.length&&!pending().length?'<button class="btn ghost" data-a="repeat">Repetir con los mismos jugadores</button><button class="btn red" data-a="reset">Nueva quedada (borra todo)</button>':''}
@@ -369,6 +371,47 @@ function storyCanvas(){
     });
     y+=ph+24;}
   x.textAlign='left';
+  if(FX()){
+    /* Parejas fijas: en lugar de la tabla, esquema del torneo en vertical (grupos ▼ eliminatorias ▼ campeón). Tamaños base grandes; solo se reducen si no caben. */
+    const T=S.teams.length,{G,Q}=fxPlan(T),AV=1800-y-70-30,IW=W-96-40,X0=68,GAP=16,LAB=48,GH=78,GR=54,MB=128,CH=112,CG=22,
+      tn=id=>{const t=S.teams.find(q=>q.id===id);return t?t.p.map(nameOf).join(' / '):'por definir'},
+      st=stats(),gl=Array.from({length:G},(_,g)=>st.filter(s=>(S.teams.find(t=>t.id===s.p.id).g||0)===g).sort((a,b)=>rate(b)-rate(a)||dif(b)-dif(a))),
+      rounds=[],PL={1:'Final',2:'Semifinales',4:'Cuartos de final'},gcols=G>1?2:1,gic=G===1?2:1,mxg=Math.max(1,...gl.map(l=>l.length)),rg=Math.ceil(mxg/gic),rowsG=Math.ceil(G/gcols);
+    for(let n=Q/2;n>=1;n/=2)rounds.push(n);
+    const HT=k=>k*(24+LAB+rowsG*(GH+GR*rg+GAP)+rounds.reduce((s,n)=>s+LAB+Math.ceil(n/(n>=2?2:1))*(MB+GAP),0)+(Q?CG+CH:0)+24);
+    let k=1;while(k>.4&&HT(k)>AV)k-=.02;
+    const th=Math.min(AV,HT(k)),F=(v,m)=>Math.max(m,Math.round(v*k));
+    card(48,y,W-96,th,'#fff');
+    let cy=y+24*k;
+    const lab=(t,ar)=>{x.textAlign='center';x.textBaseline='middle';x.fillStyle=NAVY;x.font=`900 ${F(28,14)}px ${BF}`;x.fillText((ar?'▼  ':'')+t.toUpperCase(),W/2,cy+LAB*k/2);cy+=LAB*k};
+    /* grupos */
+    lab(G>1?'Fase de grupos':'Fase de grupos · todos contra todos');
+    const gw=(IW-GAP*(gcols-1))/gcols,gh=(GH+GR*rg)*k,cw0=(gw-40)/gic;
+    gl.forEach((l,g)=>{const gx=X0+(g%gcols)*(gw+GAP),gy=cy+Math.floor(g/gcols)*(gh+GAP*k);
+      rr(gx,gy,gw,gh,22,'#f3f7fb');x.textAlign='left';x.textBaseline='middle';x.fillStyle=NAVY;x.font=`900 ${F(32,16)}px ${HF}`;x.fillText(grpL(g).toUpperCase(),gx+20,gy+GH*k/2);
+      l.forEach((s,i)=>{const cx0=gx+20+(i%gic)*cw0,my=gy+GH*k+Math.floor(i/gic)*GR*k+GR*k/2;x.fillStyle=INK;x.textAlign='left';x.font=`700 ${F(32,15)}px ${BF}`;
+        x.fillText(fit(s.p.name.replace(/ y /g,' / '),cw0-24-96*k,`700 #px ${BF}`,F(32,15),12),cx0,my);
+        x.textAlign='right';x.font=`900 ${F(32,15)}px ${BF}`;x.fillText(s.w+'-'+s.l,cx0+cw0-(gic>1&&i%2===0?24:0),my)})});
+    cy+=rowsG*(gh+GAP*k);
+    /* eliminatorias */
+    rounds.forEach(n=>{lab(PL[n],1);
+      const ms=S.matches.filter(m=>m.ph==='ko'&&m.ko===n),cols=n>=2?2:1,cw=cols===1?Math.min(IW,720):(IW-GAP)/2,bh=MB*k,hh=bh/2;
+      for(let i=0;i<n;i++){const m=ms[i],bx=cols===1?(W-cw)/2:X0+(i%2)*(cw+GAP),by=cy+Math.floor(i/cols)*(bh+GAP*k);
+        rr(bx,by,cw,bh,20,'#f3f7fb');
+        [[m&&m.ta,m&&m.sa,m&&m.sa>m.sb],[m&&m.tb,m&&m.sb,m&&m.sb>m.sa]].forEach(([t,s,w],j)=>{const ly=by+j*hh,done=m&&m.status==='done',win=done&&w;
+          if(win)rr(bx+6,ly+(j?3:6),cw-12,hh-9,14,LIME);
+          x.textBaseline='middle';x.textAlign='left';x.fillStyle=m?INK:MUT;x.font=`${win?900:700} ${F(32,15)}px ${BF}`;
+          x.fillText(fit(m?tn(t):'por definir',cw-32-70*k,`${win?900:700} #px ${BF}`,F(32,15),12),bx+18,ly+hh/2+(j?1:2));
+          if(done){x.textAlign='right';x.font=`900 ${F(36,16)}px ${HF}`;x.fillText(s,bx+cw-20,ly+hh/2+(j?1:2))}});
+        x.fillStyle='#cdd8e6';x.fillRect(bx+10,by+hh-1,cw-20,2)}
+      cy+=Math.ceil(n/cols)*(bh+GAP*k)});
+    /* campeón */
+    if(Q){cy+=CG*k;const fm=S.matches.find(m=>m.ph==='ko'&&m.ko===1&&m.status==='done'),nm=fm?tn(fm.sa>fm.sb?fm.ta:fm.tb):null,cw=Math.min(IW,760),ch=CH*k,bx=(W-cw)/2;
+      rr(bx,cy,cw,ch,26,nm?LIME:'#f3f7fb');x.textAlign='center';x.textBaseline='middle';x.fillStyle=nm?INK:MUT;
+      x.font=`900 ${F(44,18)}px ${HF}`;x.fillText(fit('🏆 '+(nm||'Campeón por definir'),cw-40,`900 #px ${HF}`,F(44,18),12),W/2,cy+ch/2+2)}
+    x.textBaseline='alphabetic';x.textAlign='left';
+    y+=th+20;
+  }else{
   /* tabla: altura de fila adaptada al nº de jugadores */
   const LIM=1740,FOOT=70,n=rows.length;let awH=aw.length?28+aw.length*50+22:0,rh=(LIM-y-awH-FOOT-90-44)/n;
   if(rh<38)rh=(1800-y-awH-FOOT-90-44)/n; /* primero se aprovecha el margen inferior para conservar los premios */
@@ -393,6 +436,7 @@ function storyCanvas(){
   if(awH){rr(48,y,W-96,awH-6,28,'#e6f9b8');x.textBaseline='middle';x.textAlign='left';x.fillStyle=INK;
     aw.forEach((a,i)=>{const ly=y+14+25+i*50,h=a[0]+' · ';x.font=`800 28px ${BF}`;x.fillText(h,84,ly);const hw=x.measureText(h).width;
       x.font=`700 28px ${BF}`;x.fillText(fit(a[1],W-96-72-hw,`700 #px ${BF}`,28,18),84+hw,ly)});x.textBaseline='alphabetic';y+=awH}
+  }
   x.textAlign='center';x.fillStyle=MUT;x.font=`700 30px ${BF}`;x.fillText(`${dn.length} partidos disputados · ${FX()?'parejas fijas':'parejas rotatorias'}`,W/2,Math.min(H-92,y+44));
   x.fillStyle=NAVY;x.font=`800 26px ${BF}`;x.fillText(fit('Juega con tus amigos y consigue el ranking en pickleandmix.github.io',W-96,`800 #px ${BF}`,26,16),W/2,H-40);
   return c;
