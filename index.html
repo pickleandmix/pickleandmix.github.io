@@ -1,9 +1,17 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#12325e">
+<meta name="description" content="Pickle&Mix: organiza quedadas de pickleball, juega con amigos, descubre clubes y comparte tu actividad.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pickle&Mix">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>PICKLE &amp; MIX</title>
-<link rel="stylesheet" href="styles.css?v=19"></head>
+<link rel="icon" type="image/jpeg" sizes="192x192" href="./icons/pickle-mix-192.jpg?v=1">
+<link rel="shortcut icon" type="image/jpeg" href="./icons/pickle-mix-192.jpg?v=1">
+<link rel="apple-touch-icon" sizes="192x192" href="./icons/pickle-mix-192.jpg?v=1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css?v=106"></head>
 <body><main id="app"></main><div id="toast" role="status"></div>
 <!-- Minijuegos integrados: cada uno es un HTML completo que se carga en un iframe al pulsar su recuadro -->
 <script type="text/plain" id="g-kitchen">
@@ -77,7 +85,7 @@ function serve(){const k=Math.random()<Math.min(.55,.28+.04*level),T=Math.max(.8
 function bpos(b){if(b.ph==='ret'){const u=b.rt;return{x:lerp(b.hx,b.tx,u),y:lerp(b.hy,b.ty,u),z:6*(1-u)+4*b.arc*u*(1-u)}}
  if(b.t<b.d1){const u=b.t/b.d1;return{x:lerp(b.x0,b.xb,u),y:lerp(b.y0,b.yb,u),z:12*(1-u)+4*b.h1*u*(1-u)}}
  const u=Math.min(1,(b.t-b.d1)/b.d2);return{x:lerp(b.xb,b.xf,u),y:lerp(b.yb,b.yf,u),z:4*b.h2*u*(1-u)}}
-function lose(t){lives--;combo=0;ball=null;say(t,'#ff6b6b',1);beep(120,.35,'sawtooth');wait=1;if(lives<=0){st='over';overT=0;if(score>best){best=score;try{localStorage.setItem('kr_best',best)}catch(e){}}}}
+function lose(t){lives--;combo=0;ball=null;say(t,'#ff6b6b',1);beep(120,.35,'sawtooth');wait=1;if(lives<=0){st='over';overT=0;try{window.parent.postMessage({type:'pm-minigame-score',game:'kitchen',score},'*')}catch(e){}if(score>best){best=score;try{localStorage.setItem('kr_best',best)}catch(e){}}}}
 function hitBall(dx,p){const perfect=dx<.09&&Math.abs(p.y-py)<.12;let pts=(perfect?20:10)+Math.min(combo,10);combo++;
  if(ball.k){pts+=10;say(perfect?'PERFECT 2X SCORE':'¡Kitchen! +10',LIME)}else say(perfect?'PERFECT 2X SCORE':'¡Bien!',perfect?LIME:'#fff');
  score+=pts;prog+=1/6;if(prog>=1){prog=0;level++;say('Nivel '+level,'#7dffb0',1.2)}
@@ -256,7 +264,7 @@ function newRound(){R.tx=rnd(-7.2,7.2);R.ty=rnd(24.9,41.2);let m=.5,k=0;
  R.label=d+' · '+(m<.25?'suave':m<.5?'moderado':m<.75?'fuerte':'muy fuerte');
  tgtA=0;ballA=0;F=null;dr=null;st=st==='menu'?'menu':'aim'}
 function start(){score=0;dScore=0;shots=10;hist.b=hist.t=hist.k=0;parts.length=rips.length=pops.length=0;document.getElementById('menu').hidden=document.getElementById('over').hidden=true;st='aim';newRound();tone(520,.12,'triangle',.07,780)}
-function endGame(){st='over';newRec=score>best;if(newRec){best=score;try{localStorage.setItem('dink_best',best)}catch(e){}}
+function endGame(){st='over';try{window.parent.postMessage({type:'pm-minigame-score',game:'dink',score},'*')}catch(e){};newRec=score>best;if(newRec){best=score;try{localStorage.setItem('dink_best',best)}catch(e){}}
  document.getElementById('fs').textContent=score;document.getElementById('sb').textContent=hist.b;document.getElementById('st').textContent=hist.t;document.getElementById('sk').textContent=hist.k;
  document.getElementById('rank').textContent=score>=800?'Leyenda del dink':score>=500?'Maestro de la Kitchen':score>=300?'Buen toque':score>=150?'En racha':'Calentando';
  document.getElementById('rec').textContent=newRec&&score>0?'¡Nuevo récord!':'Récord: '+best;document.getElementById('over').hidden=false;document.getElementById('mrec').textContent=best?'Récord: '+best:''}
@@ -436,6 +444,32 @@ h2{margin:0;font:900 clamp(28px,9vw,40px)/1.05 "Arial Black",Impact,sans-serif;c
 .cf{position:fixed;top:-16px;width:9px;height:13px;border-radius:2px;animation:fall 2.6s linear forwards;z-index:11;pointer-events:none}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 @media (prefers-reduced-motion:reduce){.in{transition:none}.tro,.cf,.pill,.done svg{animation:none}}
+
+/* ---------- Niveles e insignias de perfil ---------- */
+.achievement-panel{margin:18px 0;overflow:hidden}
+.achievement-head,.achievement-level-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.achievement-head h3{margin:4px 0 0}
+.achievement-level{background:#fff1d9;color:#a95e12;border:1px solid #f3d6a7;border-radius:999px;padding:6px 10px;font-size:.72rem;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+.achievement-level-row{margin-top:16px}
+.achievement-level-row>div{display:grid;gap:3px}
+.achievement-level-row small{color:var(--muted,#718096);font-size:.8rem}
+.achievement-level-row>strong{font-size:.85rem;color:var(--muted,#718096)}
+.achievement-progress{height:8px;border-radius:99px;background:#e9edf3;overflow:hidden;margin:10px 0 14px}
+.achievement-progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f0a43a,#f5c66e);transition:width .25s ease}
+.achievement-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 18px}
+.achievement-stats span{display:grid;gap:2px;padding:9px 7px;background:var(--soft,#f5f7fa);border-radius:10px;text-align:center;font-size:.7rem;color:var(--muted,#718096)}
+.achievement-stats b{font-size:1rem;color:var(--ink,#18304f)}
+.achievement-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.achievement-badge{display:flex;align-items:flex-start;gap:9px;min-width:0;padding:10px;border:1px solid var(--line,#e6eaf0);border-radius:12px;background:var(--surface,#fff)}
+.achievement-badge.locked{opacity:.48;filter:grayscale(.8)}
+.achievement-mark{flex:0 0 36px;width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#fff0d8;color:#a95e12;font-size:.78rem;font-weight:900}
+.achievement-badge.earned .achievement-mark{background:#ffdfaa;box-shadow:inset 0 0 0 1px #f0c477}
+.achievement-badge>div{display:grid;gap:3px;min-width:0}
+.achievement-badge b{font-size:.78rem;line-height:1.2}
+.achievement-badge small{font-size:.68rem;line-height:1.3;color:var(--muted,#718096)}
+.achievement-badge em{font-style:normal;font-size:.62rem;color:var(--muted,#8793a3)}
+@media(min-width:700px){.achievement-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:390px){.achievement-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.achievement-grid{grid-template-columns:1fr}}
 </style></head><body>
 <div id="app">
 <section id="menu"><button class="ib snd" aria-label="Sonido"></button>
@@ -535,4 +569,14 @@ $('#play').onclick=newGame;$('#quit').onclick=toMenu;menu();
 <\/script></body></html>
 
 </script>
-<script src="app.js?v=19"></script></body></html>
+<!-- Supabase JS (librería oficial, versión fija) · si no carga, la app funciona igual sin acceso con Google -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="i18n.js?v=17"></script>
+<script src="app.js?v=185"></script><script>
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .catch(error => console.warn('[pwa] No se pudo registrar el service worker:', error));
+  });
+}
+</script></body></html>
