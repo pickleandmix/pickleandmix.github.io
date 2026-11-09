@@ -300,26 +300,36 @@ function watchProfileNotifications(userId){if(profileNotificationChannel){sbc.re
 async function openClubJoinRequestNotification(id){
  if(!sbc||!AU.user||!id)return;
  try{
-  const {data,error}=await sbc.from('club_join_requests').select('id,club_id,status').eq('id',id).maybeSingle();
-  if(error)throw error;
-  if(!data){toast('Esta solicitud ya no está disponible.');return}
-  ACH.notificationsOpen=false;
-  // Cargar primero el directorio y las membresías para asegurar que el detalle reconoce al administrador.
-  view='clubs';CL.selectedId=data.club_id;CL.tab='info';CL.openPostId=null;CL.openEventId=null;
-  render();
-  await loadClubs();
-  const club=CL.items.find(c=>c.id===data.club_id);
-  if(!club){toast('No se ha podido encontrar el club de esta solicitud.');return}
-  if(!clubAdmin(data.club_id)){toast('Ya no tienes permisos de administración en este club.');return}
-  CL.selectedId=data.club_id;CL.tab='manage';CL.openPostId=null;CL.openEventId=null;
-  view='club-detail';render();
-  await loadClubData(data.club_id);
+  // Resolver la solicitud, el club y el rol por separado: no depender de loadClubs()
+  // ni de sus consultas auxiliares para poder abrir la notificación.
+  const [requestResult,clubResult,memberResult]=await Promise.all([
+   sbc.from('club_join_requests').select('id,club_id,status').eq('id',id).maybeSingle(),
+   sbc.from('club_join_requests').select('club_id').eq('id',id).maybeSingle()
+  ].slice(0,1).concat([]));
+  if(requestResult.error)throw requestResult.error;
+  const request=requestResult.data;
+  if(!request){toast('Esta solicitud ya no está disponible.');return}
+  const [clubResponse,memberResponse]=await Promise.all([
+   sbc.from('clubs').select('id,name,description,city,created_by,created_at,avatar_url,banner_url,access_mode,club_type,official_status,official_address,official_province,official_email,official_phone,official_website').eq('id',request.club_id).maybeSingle(),
+   sbc.from('club_members').select('club_id,user_id,role,joined_at').eq('club_id',request.club_id).eq('user_id',AU.user.id).maybeSingle()
+  ]);
+  if(clubResponse.error)throw clubResponse.error;
+  if(memberResponse.error)throw memberResponse.error;
+  if(!clubResponse.data){toast('El club de esta solicitud ya no está disponible.');return}
+  const club=clubResponse.data,member=memberResponse.data;
+  if(!member||member.role!=='admin'){toast('Ya no tienes permisos de administración en este club.');return}
+  CL.items=[club,...(CL.items||[]).filter(x=>x.id!==club.id)];
+  CL.members=[member,...(CL.members||[]).filter(x=>!(x.club_id===member.club_id&&x.user_id===member.user_id))];
+  CL.selectedId=club.id;CL.tab='manage';CL.openPostId=null;CL.openEventId=null;
+  CL.settingsOpen=false;CL.eventOpen=false;CL.postOpen=false;CL.inviteUrl='';
+  ACH.notificationsOpen=false;view='club-detail';render();
+  await loadClubData(club.id);
   CL.tab='manage';paintClubs();
   const {error:readError}=await sbc.from('profile_notifications').update({read_at:new Date().toISOString()}).eq('user_id',AU.user.id).eq('notification_type','club_join_request_received').eq('reference_id',id).is('read_at',null);
   if(readError)console.warn('[notifications] mark join request as read:',readError.message);
   ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type==='club_join_request_received'&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);
-  if(data.status!=='pending')toast('Esta solicitud ya ha sido resuelta.');
- }catch(error){console.warn('[notifications] open club join request:',error&&error.message);toast('No se ha podido abrir la solicitud. Inténtalo de nuevo.')}
+  if(request.status!=='pending')toast('La solicitud ya ha sido resuelta. Estás en la gestión del club.');
+ }catch(error){console.warn('[notifications] open club join request:',error&&error.message);toast('No se ha podido abrir el club. Inténtalo de nuevo.')}
 }
 async function openFriendRequestNotification(id){
   if(!sbc||!AU.user)return;
