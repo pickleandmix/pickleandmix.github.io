@@ -1572,7 +1572,8 @@ document.addEventListener('click',e=>{
   e.preventDefault();
   e.stopImmediatePropagation();
   const type=item.dataset.notificationOpen,id=item.dataset.id;
-  if(type==='achievement_unlocked')openAchievementNotification(id);\n  else if(type==='friend_request_received')openFriendRequestNotification(id);
+  if(type==='achievement_unlocked')openAchievementNotification(id);
+  else if(type==='friend_request_received')openFriendRequestNotification(id);
   else if(type==='support_reply_received')openSupportReplyNotification(id);
   else if(type==='club_join_request_received')openClubJoinRequestNotification(id);
   else openClubNotification(type,id);
