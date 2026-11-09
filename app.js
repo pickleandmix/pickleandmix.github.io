@@ -302,12 +302,8 @@ async function openClubJoinRequestNotification(id){
  try{
   // Resolver la solicitud, el club y el rol por separado: no depender de loadClubs()
   // ni de sus consultas auxiliares para poder abrir la notificación.
-  const [requestResult,clubResult,memberResult]=await Promise.all([
-   sbc.from('club_join_requests').select('id,club_id,status').eq('id',id).maybeSingle(),
-   sbc.from('club_join_requests').select('club_id').eq('id',id).maybeSingle()
-  ].slice(0,1).concat([]));
-  if(requestResult.error)throw requestResult.error;
-  const request=requestResult.data;
+  const {data:request,error:requestError}=await sbc.from('club_join_requests').select('id,club_id,status').eq('id',id).maybeSingle();
+  if(requestError)throw requestError;
   if(!request){toast('Esta solicitud ya no está disponible.');return}
   const [clubResponse,memberResponse]=await Promise.all([
    sbc.from('clubs').select('id,name,description,city,created_by,created_at,avatar_url,banner_url,access_mode,club_type,official_status,official_address,official_province,official_email,official_phone,official_website').eq('id',request.club_id).maybeSingle(),
