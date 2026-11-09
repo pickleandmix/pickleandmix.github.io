@@ -297,13 +297,23 @@ async function openClubJoinRequestNotification(id){
   const {data,error}=await sbc.from('club_join_requests').select('id,club_id,status').eq('id',id).maybeSingle();
   if(error)throw error;
   if(!data){toast('Esta solicitud ya no está disponible.');return}
-  await sbc.from('profile_notifications').update({read_at:new Date().toISOString()}).eq('user_id',AU.user.id).eq('notification_type','club_join_request_received').eq('reference_id',id).is('read_at',null);
-  ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type==='club_join_request_received'&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);
   ACH.notificationsOpen=false;
-  CL.selectedId=data.club_id;CL.tab='manage';CL.openPostId=null;CL.openEventId=null;view='club-detail';render();
-  await loadClubs();await loadClubData(data.club_id);
+  // Cargar primero el directorio y las membresías para asegurar que el detalle reconoce al administrador.
+  view='clubs';CL.selectedId=data.club_id;CL.tab='info';CL.openPostId=null;CL.openEventId=null;
+  render();
+  await loadClubs();
+  const club=CL.items.find(c=>c.id===data.club_id);
+  if(!club){toast('No se ha podido encontrar el club de esta solicitud.');return}
+  if(!clubAdmin(data.club_id)){toast('Ya no tienes permisos de administración en este club.');return}
+  CL.selectedId=data.club_id;CL.tab='manage';CL.openPostId=null;CL.openEventId=null;
+  view='club-detail';render();
+  await loadClubData(data.club_id);
+  CL.tab='manage';paintClubs();
+  const {error:readError}=await sbc.from('profile_notifications').update({read_at:new Date().toISOString()}).eq('user_id',AU.user.id).eq('notification_type','club_join_request_received').eq('reference_id',id).is('read_at',null);
+  if(readError)console.warn('[notifications] mark join request as read:',readError.message);
+  ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type==='club_join_request_received'&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);
   if(data.status!=='pending')toast('Esta solicitud ya ha sido resuelta.');
- }catch(error){console.warn('[notifications] open club join request:',error&&error.message);toast('No se ha podido abrir la solicitud.')}
+ }catch(error){console.warn('[notifications] open club join request:',error&&error.message);toast('No se ha podido abrir la solicitud. Inténtalo de nuevo.')}
 }
 async function openFriendRequestNotification(id){
   if(!sbc||!AU.user)return;
