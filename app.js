@@ -343,7 +343,20 @@ async function openFriendRequestNotification(id){
     ACH.notificationsOpen=false;view='friends';await loadFriends();toast('Aquí tienes tus solicitudes de amistad.');
   }catch(error){console.warn('[notifications] open friend request:',error&&error.message);view='friends';await loadFriends()}
 }
-async function openClubNotification(type,id){if(!sbc||!AU.user||!id)return;const table=type==='club_post_created'?'club_posts':type==='club_event_created'?'club_events':null;if(!table)return;try{const {data,error}=await sbc.from(table).select('club_id').eq('id',id).maybeSingle();if(error)throw error;if(!data){toast('Esta novedad ya no está disponible.');return}await sbc.from('profile_notifications').update({read_at:new Date().toISOString()}).eq('user_id',AU.user.id).eq('notification_type',type).eq('reference_id',id).is('read_at',null);ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type===type&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);ACH.notificationsOpen=false;CL.selectedId=data.club_id;CL.tab='info';CL.openPostId=null;CL.openEventId=null;view='club-detail';render();await loadClubs()}catch(e){console.warn('[notifications] open club item:',e&&e.message);toast('No se ha podido abrir esta novedad.')}}
+async function openClubNotification(type,id){
+ if(!sbc||!AU.user||!id)return;
+ const table=type==='club_post_created'?'club_posts':type==='club_event_created'?'club_events':null;
+ if(!table)return;
+ try{
+  const {data,error}=await sbc.from(table).select('club_id').eq('id',id).maybeSingle();
+  if(error)throw error;
+  if(!data){toast('Esta novedad ya no está disponible.');return}
+  await sbc.from('profile_notifications').update({read_at:new Date().toISOString()}).eq('user_id',AU.user.id).eq('notification_type',type).eq('reference_id',id).is('read_at',null);
+  ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type===type&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);
+  ACH.notificationsOpen=false;
+  await openActivityClubItem(type==='club_post_created'?'post':'event',id,data.club_id);
+ }catch(error){console.warn('[notifications] open club item:',error&&error.message);toast('No se ha podido abrir esta novedad.')}
+}
 async function openSupportReplyNotification(id,fromPush=false){
  if(!sbc||!AU.user||!id||!/^[0-9a-f-]{36}$/i.test(id))return;
  ACH.notificationsOpen=false;SETTINGS_TAB='help';view='settings';SUPPORT.selected=id;SUPPORT.loaded=false;SUPPORT.replies=[];render();
