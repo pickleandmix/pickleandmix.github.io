@@ -288,9 +288,9 @@ function achievementCatalog(summary,publicMode){
 function notificationsPanel(){
   const items=ACH.notifications||[],unread=items.filter(n=>!n.read_at).length;
   return '<section class="notification-popover" role="dialog" aria-label="Notificaciones"><header class="notification-popover-head"><div><b>Notificaciones</b><small>'+(unread?unread+' sin leer':'Estás al día')+'</small></div><button type="button" data-a="notificationsToggle" aria-label="Cerrar notificaciones">×</button></header><div class="notification-popover-list">'+(items.length?items.map(n=>{
-    const title=(n.title||'').toLowerCase(),joinRequestNotice=n.notification_type==='club_join_request_received'||title.includes('solicitud para unirse'),clubNotice=n.notification_type==='club_post_created'||n.notification_type==='club_event_created',friendNotice=n.notification_type==='friend_request_received',supportNotice=n.notification_type==='support_reply_received',actionable=clubNotice||joinRequestNotice||friendNotice||supportNotice;
+    const title=(n.title||'').toLowerCase(),joinRequestNotice=n.notification_type==='club_join_request_received'||title.includes('solicitud para unirse'),clubNotice=n.notification_type==='club_post_created'||n.notification_type==='club_event_created',friendNotice=n.notification_type==='friend_request_received',supportNotice=n.notification_type==='support_reply_received',achievementNotice=n.notification_type==='achievement_unlocked',actionable=clubNotice||joinRequestNotice||friendNotice||supportNotice||achievementNotice;
     const actionType=joinRequestNotice?'club_join_request_received':n.notification_type;
-    const symbol=supportNotice?'✉':joinRequestNotice?'♧':n.notification_type==='achievement_unlocked'?'✦':n.notification_type==='club_post_created'?'▤':n.notification_type==='club_event_created'?'◷':friendNotice?'♧':'•';
+    const symbol=supportNotice?'✉':joinRequestNotice?'♧':achievementNotice?'✦':n.notification_type==='club_post_created'?'▤':n.notification_type==='club_event_created'?'◷':friendNotice?'♧':'•';
     const inner='<span class="notification-symbol">'+symbol+'</span><div><b>'+esc(n.title)+'</b><p>'+esc(n.body)+'</p><small>'+new Date(n.created_at).toLocaleDateString(APP_LANG==='en'?'en-US':'es-ES',{day:'numeric',month:'short',year:'numeric'})+'</small></div>';
     return actionable?'<button type="button" class="notification-item notification-link '+(n.read_at?'is-read':'is-unread')+'" data-notification-open="'+actionType+'" data-id="'+esc(n.reference_id)+'" aria-label="Abrir '+esc(n.title)+'">'+inner+'<span class="notification-open-arrow" aria-hidden="true">›</span></button>':'<article class="notification-item '+(n.read_at?'is-read':'is-unread')+'">'+inner+'</article>';
   }).join(''):'<p class="notification-empty">Todavía no tienes notificaciones. Cuando haya novedades, aparecerán aquí.</p>')+'</div>'+(unread?'<footer class="notification-popover-foot"><button type="button" data-a="notificationsReadAll">Marcar todas como leídas</button></footer>':'')+'</section>';
@@ -326,6 +326,14 @@ async function openClubJoinRequestNotification(id){
   ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type==='club_join_request_received'&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);
   if(request.status!=='pending')toast('La solicitud ya ha sido resuelta. Estás en la gestión del club.');
  }catch(error){console.warn('[notifications] open club join request:',error&&error.message);toast('No se ha podido abrir el club. Inténtalo de nuevo.')}
+}
+async function openAchievementNotification(id){
+ if(!sbc||!AU.user)return;
+ try{
+  if(id)await sbc.from('profile_notifications').update({read_at:new Date().toISOString()}).eq('user_id',AU.user.id).eq('notification_type','achievement_unlocked').eq('reference_id',id).is('read_at',null);
+  ACH.notifications=(ACH.notifications||[]).map(n=>n.notification_type==='achievement_unlocked'&&n.reference_id===id?{...n,read_at:n.read_at||new Date().toISOString()}:n);
+  ACH.notificationsOpen=false;view='profile';render();await loadMyHistory();toast('Aquí tienes tu perfil y tus logros.');
+ }catch(error){console.warn('[notifications] open achievement:',error&&error.message);ACH.notificationsOpen=false;view='profile';render()}
 }
 async function openFriendRequestNotification(id){
   if(!sbc||!AU.user)return;
@@ -1551,7 +1559,7 @@ document.addEventListener('click',e=>{
   e.preventDefault();
   e.stopImmediatePropagation();
   const type=item.dataset.notificationOpen,id=item.dataset.id;
-  if(type==='friend_request_received')openFriendRequestNotification(id);
+  if(type==='achievement_unlocked')openAchievementNotification(id);\n  else if(type==='friend_request_received')openFriendRequestNotification(id);
   else if(type==='support_reply_received')openSupportReplyNotification(id);
   else if(type==='club_join_request_received')openClubJoinRequestNotification(id);
   else openClubNotification(type,id);
@@ -1601,7 +1609,7 @@ document.addEventListener('click',e=>{
   if(t.hasAttribute('data-club-request-cancel')){cancelClubJoinRequest();return}
   if(d.clubInvitation){respondClubInvite(d.id,d.clubInvitation==='accept');return}
   if(t.hasAttribute('data-club-member-menu')){const row=t.closest('.club-member-item'),open=!row.classList.contains('menu-open');document.querySelectorAll('.club-member-item.menu-open').forEach(x=>{x.classList.remove('menu-open');const b=x.querySelector('[data-club-member-menu]'),m=x.querySelector('.club-member-menu-popover');if(b)b.setAttribute('aria-expanded','false');if(m)m.setAttribute('aria-hidden','true')});if(open){row.classList.add('menu-open');t.setAttribute('aria-expanded','true');const m=row.querySelector('.club-member-menu-popover');if(m)m.setAttribute('aria-hidden','false')}return}
-  if(d.notificationOpen){if(d.notificationOpen==='friend_request_received')openFriendRequestNotification(d.id);else if(d.notificationOpen==='support_reply_received')openSupportReplyNotification(d.id);else if(d.notificationOpen==='club_join_request_received')openClubJoinRequestNotification(d.id);else openClubNotification(d.notificationOpen,d.id);return}
+  if(d.notificationOpen){if(d.notificationOpen==='achievement_unlocked')openAchievementNotification(d.id);else if(d.notificationOpen==='friend_request_received')openFriendRequestNotification(d.id);else if(d.notificationOpen==='support_reply_received')openSupportReplyNotification(d.id);else if(d.notificationOpen==='club_join_request_received')openClubJoinRequestNotification(d.id);else openClubNotification(d.notificationOpen,d.id);return}
   if(d.clubMemberAction){const row=t.closest('.club-member-item');if(row){row.classList.remove('menu-open');const b=row.querySelector('[data-club-member-menu]'),m=row.querySelector('.club-member-menu-popover');if(b)b.setAttribute('aria-expanded','false');if(m)m.setAttribute('aria-hidden','true')}manageClubMember(d.id,d.clubMemberAction);return}
   if(t.hasAttribute('data-club-post-toggle')){CL.postOpen=!CL.postOpen;CL.eventOpen=false;paintClubs();return}
   if(t.hasAttribute('data-club-post-menu')){const box=t.closest('.club-post-actions'),open=!box.classList.contains('menu-open');document.querySelectorAll('.club-post-actions.menu-open').forEach(x=>{x.classList.remove('menu-open');const b=x.querySelector('[data-club-post-menu]'),m=x.querySelector('.club-post-menu-popover');if(b)b.setAttribute('aria-expanded','false');if(m)m.setAttribute('aria-hidden','true')});if(open){box.classList.add('menu-open');t.setAttribute('aria-expanded','true');const m=box.querySelector('.club-post-menu-popover');if(m)m.setAttribute('aria-hidden','false')}return}
