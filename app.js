@@ -1531,6 +1531,19 @@ const A={
   repeat(){if(!confirm('Se borrarán partidos y resultados, pero se mantienen los jugadores. ¿Continuar?'))return;S.savedSessionId=null;S.matches=[];S.teams=[];S.draft=[];S.started=false;S.nid=1;S.players.forEach(p=>p.status='active');SC={};ed=null;ct=1;tmp=null;view='setup'},
   reset(){if(confirm('Se borrarán jugadores, partidos y resultados. ¿Seguro?')&&confirm('Última comprobación: ¿empezar una quedada nueva?')){S=fresh();SC={};ed=null;ct=1;tmp=null;view='home'}}
 };
+// Captura prioritaria para que las notificaciones sean activables incluso si otro manejador de la página intercepta el clic.
+document.addEventListener('click',e=>{
+  const target=e.target instanceof Element?e.target:null;
+  const item=target&&target.closest('[data-notification-open]');
+  if(!item)return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  const type=item.dataset.notificationOpen,id=item.dataset.id;
+  if(type==='friend_request_received')openFriendRequestNotification(id);
+  else if(type==='support_reply_received')openSupportReplyNotification(id);
+  else if(type==='club_join_request_received')openClubJoinRequestNotification(id);
+  else openClubNotification(type,id);
+},true);
 document.addEventListener('click',e=>{
   // Dejar que el navegador active el input file asociado a los controles de imagen del club.
   if(e.target.closest('label.club-avatar-edit,label.club-image-edit,[data-club-image-file]'))return;
