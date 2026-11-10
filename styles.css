@@ -2148,4 +2148,6 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .profile-public-hero .profile-public-friend-count:hover{transform:none;box-shadow:0 3px 0 rgba(7,24,45,.2);filter:none}
 .profile-public-hero .profile-public-actions{min-width:0}
 @media(max-width:520px){.profile-public-hero .profile-avatar-large>.av{width:68px;height:68px;font-size:27px}.profile-public-hero .profile-hero-main{gap:12px}.profile-public-hero .profile-hero-copy>b{font-size:19px}.profile-public-hero .profile-hero-actions{gap:8px;flex-wrap:wrap}.profile-public-hero .profile-public-actions{justify-content:flex-start}}
-
+/* Evitar que los modales de publicaciones/eventos bloqueen la gestión del club */
+.club-detail-page[data-club-tab="manage"] .club-post-modal,
+.club-detail-page[data-club-tab="manage"] .club-event-modal{display:none!important;}
