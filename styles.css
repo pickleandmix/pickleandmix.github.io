@@ -1444,6 +1444,11 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
   outline-offset:2px;
 }
 @media(max-width:480px){
+  /* En móvil, neutralizar márgenes y anchuras heredadas que desplazan el contenido del panel. */
+  main:has(.admin-page){padding-left:12px;padding-right:12px;}
+  .admin-page,.admin-page>*{width:100%;max-width:100%;min-width:0;margin-left:0;margin-right:0;}
+  .admin-page .admin-content{width:100%;min-width:0;margin:0;padding:13px;}
+  .admin-page .admin-section-head,.admin-page .admin-list-toolbar,.admin-page .admin-subpanel,.admin-page .admin-activity-filters,.admin-page .admin-empty-state{max-width:100%;min-width:0;margin-left:0;margin-right:0;}
   .admin-page .admin-nav-btn{justify-content:center;min-height:38px;padding:8px 9px;font-size:11px}
   .admin-page .admin-row-actions .btn{min-height:35px;padding:8px 10px}
   .admin-page .admin-filter-btn{min-height:33px;padding:7px 10px}
