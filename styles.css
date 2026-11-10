@@ -2202,3 +2202,15 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .club-detail-page[data-club-tab="posts"] .club-leave-card,
 .club-detail-page[data-club-tab="manage"] .club-leave-card{display:none!important}
 .club-detail-page[data-club-tab="members"] .club-leave-card{display:flex!important;flex-direction:column;gap:14px}
+
+/* Invitación inicial para activar notificaciones push */
+.push-welcome-overlay{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:22px;background:rgba(5,16,31,.68);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur((7px);-webkit-backdrop-filter:blur(7px)}
+.push-welcome-card{width:min(100%,420px);max-height:calc(100dvh - 44px);overflow:auto;padding:26px 22px 20px;border:1px solid var(--line,rgba(18,50,94,.12));border-radius:24px;background:var(--card,#fff);color:var(--text,#17304f);box-shadow:0 24px 80px rgba(0,0,0,.28);text-align:center}
+.push-welcome-icon{width:58px;height:58px;margin:0 auto 14px;display:grid;place-items:center;border-radius:19px;background:#eff8d6;color:#365b0d;font-size:30px}
+.push-welcome-card h2{margin:0 0 9px;font-size:21px;line-height:1.2;letter-spacing:-.025em}
+.push-welcome-card>p{margin:0 auto 17px;max-width:330px;color:var(--muted,#68798d);font-size:13px;line-height:1.5}
+.push-welcome-card ul{display:grid;gap:10px;margin:0 0 21px;padding:0;list-style:none;text-align:left}
+.push-welcome-card li{position:relative;padding-left:25px;font-size:13px;line-height:1.4}
+.push-welcome-card li:before{content:'✓';position:absolute;left:2px;top:0;color:#6c991e;font-weight:900}
+.push-welcome-card .push-welcome-accept,.push-welcome-card .push-welcome-later{width:100%;min-height:46px;margin-top:8px}
+.push-welcome-card>small{display:block;margin-top:13px;color:var(--muted,#718096);font-size:10px;line-height:1.4}
