@@ -216,7 +216,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .profile-public-actions{display:flex;justify-content:flex-end;align-items:center;gap:9px;flex-wrap:wrap;margin:0}
 .profile-public-actions .btn{width:auto;margin:0}
 .profile-public-actions .profile-friend-status{display:inline-flex;align-items:center;padding:7px 10px;border-radius:9px;background:var(--ball);color:var(--court);font-size:12px;font-weight:800;white-space:nowrap}
-.profile-public-actions .profile-friend-status.is-friend{background:transparent;border:1px solid var(--line)}
+.profile-public-actions .profile-friend-status.is-friend{background:transparent;border:1px solid var(--line)}.profile-public-actions .profile-friend-status.is-friend{color:var(--ball);border-color:rgba(212,255,58,.8);background:rgba(212,255,58,.08)}
 .profile-public-actions .profile-remove-friend{color:var(--mut);border-color:var(--line)}
 .profile-public-actions .profile-remove-friend:hover{color:var(--danger,#b42318);border-color:currentColor}
 @media(max-width:480px){.profile-public-hero{padding:16px;gap:15px}.profile-public-hero .profile-public-avatar .av{width:58px;height:58px;border-radius:17px}.profile-public-social-row{align-items:flex-start}.profile-public-actions{justify-content:flex-end;gap:7px}.profile-public-actions .btn{font-size:12px;padding:8px 10px}.profile-public-actions .profile-friend-status{font-size:11px;padding:7px 8px}}
