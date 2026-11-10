@@ -711,8 +711,7 @@ function vClubDetail(){
   (invited&&!admin?'<section class="card club-admin-section club-invitation-panel" data-club-panel="info"><h3>Invitación pendiente</h3>'+invited+'</section>':'')+
   (!mine&&!invited?'<section class="card club-join-card" data-club-panel="info"><span class="club-section-kicker">FORMA PARTE</span><h3>Únete a este club</h3><p>'+(mode==='open'?'Este club permite el acceso libre.':mode==='approval'?'Envía una solicitud; el administrador tendrá que aceptarla.':'Este club es privado. Necesitas un enlace o una invitación directa.')+'</p>'+(mode==='private'?'<span class="tag">Acceso por invitación</span>':CL.myRequest?'<div class="club-pending-request"><span class="tag">Solicitud pendiente</span><button class="btn xs ghost" data-club-request-cancel>Cancelar solicitud</button></div>':'<button class="btn" data-club-join="'+c.id+'">'+(mode==='open'?'Unirme al club':'Solicitar unirme')+'</button>')+'</section>':'')+
   (mine?'<section class="card club-admin-section club-posts-section" data-club-panel="posts"><div class="club-section-heading-row"><div class="club-section-heading"><span class="club-section-kicker">NOVEDADES</span><h3>Publicaciones</h3><p>Noticias e información de interés para los miembros.</p></div>'+(canCreatePosts?'<button class="btn sm" data-club-post-toggle>＋ Crear publicación</button>':'')+'</div>'+postForm+(postCards||'<p class="mut">Todavía no hay publicaciones. Aquí aparecerán las noticias del club.</p>')+'</section><section class="card club-admin-section club-events-section" data-club-panel="events"><div class="club-section-heading-row"><div class="club-section-heading"><span class="club-section-kicker">ACTIVIDAD</span><h3>Eventos del club</h3></div>'+(canCreateEvents?'<button class="btn sm" data-club-event-toggle>＋ Crear evento</button>':'')+'</div>'+eventForm+(eventCards||'<p class="mut">Todavía no hay eventos publicados.</p>')+'</section>'+
-  '<section class="card club-members" data-club-panel="members"><div class="club-section-heading-row"><div class="club-section-heading"><span class="club-section-kicker">LA COMUNIDAD</span><h3>Miembros</h3></div><span class="friends-total">'+memberCount+'</span></div>'+(!mine&&mode==='approval'?'<p class="mut">La lista de miembros solo está disponible para miembros del club.</p>':(people||'<p class="mut">Aún no hay miembros.</p>'))+'</section>'+
-  (mine?'<section class="card club-leave-card" data-club-panel="members"><div><b>¿Quieres dejar este club?</b><p>Podrás volver a unirte más adelante si el acceso del club lo permite.</p></div><button type="button" class="btn ghost club-leave-action" data-club-leave="'+c.id+'">Salir del club</button></section>':'')+
+  '<section class="card club-members" data-club-panel="members"><div class="club-section-heading-row"><div class="club-section-heading"><span class="club-section-kicker">LA COMUNIDAD</span><h3>Miembros</h3></div><span class="friends-total">'+memberCount+'</span></div>'+(!mine&&mode==='approval'?'<p class="mut">La lista de miembros solo está disponible para miembros del club.</p>':(people||'<p class="mut">Aún no hay miembros.</p>'))+(mine?'<div class="club-leave-card"><div><b>¿Quieres dejar este club?</b><p>Podrás volver a unirte más adelante si el acceso del club lo permite.</p></div><button type="button" class="btn ghost club-leave-action" data-club-leave="'+c.id+'">Salir del club</button></div>':'')+'</section>'+
   (admin?'<div class="club-admin-zone" data-club-panel="manage"><div class="club-admin-zone-heading"><span class="club-section-kicker">SOLO ADMINISTRADORES</span><h3>Gestión del club</h3><p>Herramientas para organizar y mantener el club.</p></div>'+adminTools+settings+'<section class="club-danger-zone"><div><b>Zona de administración</b><small>Acciones permanentes sobre este club.</small></div><button class="btn red" data-club-delete="'+c.id+'">Eliminar club</button></section></div>':''):'')+'</div>'+postModal+eventModal;
 }
 async function createClub(form){
@@ -752,12 +751,18 @@ async function leaveClub(id){
   const club=CL.items.find(x=>x.id===id);
   if(!sbc||!AU.user||CL.busy)return;
   if(club&&club.created_by===AU.user.id){toast('Antes de abandonar el club, transfiere la propiedad a otro miembro.');return}
-  const membership=clubMember(id,AU.user.id),isAdmin=membership&&membership.role==='admin';
+  const membership=clubMember(id,AU.user.id);
+  if(!membership){toast('No aparece tu pertenencia a este club. Actualiza la lista e inténtalo de nuevo.');return}
+  const isAdmin=membership.role==='admin';
   const message=isAdmin?'¿Quieres abandonar este club? Dejarás de ser administrador y perderás tus permisos de gestión.':'¿Quieres salir de este club?';
   if(!confirm(message))return;
-  CL.busy='leave:'+id;
-  try{const {error}=await sbc.from('club_members').delete().eq('club_id',id).eq('user_id',AU.user.id);if(error)throw error;await loadClubs();view='clubs';CL.selectedId=null;render();toast('Has salido del club.');loadMyAchievements()}
-  catch(error){console.warn('[clubs] leave:',error&&error.message);toast('No se ha podido salir del club.')}
+  CL.busy='leave:'+id;paintClubs();
+  try{
+    const {data,error}=await sbc.from('club_members').delete().eq('club_id',id).eq('user_id',AU.user.id).select('club_id').maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('La base de datos no ha eliminado tu pertenencia. Comprueba los permisos de este club.');
+    await loadClubs();view='clubs';CL.selectedId=null;render();toast('Has salido del club.');loadMyAchievements()
+  }catch(error){console.warn('[clubs] leave:',error&&error.message);toast(error&&error.message?'No se ha podido salir del club: '+error.message:'No se ha podido salir del club.')}
   finally{CL.busy='';paintClubs()}
 }
 async function deleteClub(id){
