@@ -1495,7 +1495,7 @@ async function showMiniGameLeaderboard(game){
   const previous=ov.querySelector('#miniLb');if(previous)previous.remove();
   const panel=document.createElement('div');panel.id='miniLb';panel.className='mini-lb';
   panel.innerHTML=`<section class="mini-lb-card"><header><div><small>PICKLE &amp; MIX</small><h2>Top 10 · ${GN[game]||'Pong'}</h2></div><button type="button" class="btn sm red" data-lb-close>Cerrar ✕</button></header><p class="mini-lb-note">Mejor puntuación personal de cada jugador. Solo se guardan marcas de cuentas registradas.</p><div class="mini-lb-list">Cargando clasificación…</div></section>`;
-  ov.appendChild(panel);
+  document.body.appendChild(panel);
   panel.querySelector('[data-lb-close]').addEventListener('click',()=>panel.remove());
   try{
     if(!sbc)throw new Error('Clasificación no disponible');
@@ -1520,7 +1520,7 @@ const A={
   play(){if($('#ov'))return;const o=document.createElement('div');o.id='ov';o.dataset.game='pong';o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
     o.innerHTML='<div class="ovh"><span>Pong de PICKLE&amp;MIX</span><div class="ov-actions"><button class="btn sm" data-lb>Top 10</button><button class="btn sm red" data-a="closeg">Cerrar ✕</button></div></div><canvas id="pong2"></canvas><p id="phint2"></p>';
     document.body.appendChild(o);o.querySelector('[data-lb]').addEventListener('click',()=>showMiniGameLeaderboard('pong'));document.body.style.overflow='hidden';initPong('pong2','phint2')},
-  closeg(){const o=$('#ov');if(o){if(o._miniMessageHandler)window.removeEventListener('message',o._miniMessageHandler);o.remove()}document.body.style.overflow=''},
+  closeg(){const lb=$('#miniLb');if(lb)lb.remove();const o=$('#ov');if(o){if(o._miniMessageHandler)window.removeEventListener('message',o._miniMessageHandler);o.remove()}document.body.style.overflow=''},
   kitchen(){openGame('kitchen')},dink(){openGame('dink')},pairs(){openGame('pairs')},
   /* Cuenta (Supabase · Google) */
   login(){if(!sbc||AU.busy)return;AU.busy=true;AU.err='';
