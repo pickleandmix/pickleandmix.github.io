@@ -1454,7 +1454,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
      Evita que el contenido flex se mida por su ancho intrínseco y quede desplazado. */
   .admin-page .admin-row{width:100%;box-sizing:border-box;align-items:stretch;}
   .admin-page .admin-row-main{width:100%;max-width:100%;min-width:0;flex:0 1 auto;box-sizing:border-box;margin:0;padding:0;}
-  .admin-page .admin-row-main>div{width:100%;max-width:100%;min-width:0;box-sizing:border-box;}
+  .admin-page .admin-row-main>div{display:flex;width:100%;max-width:100%;min-width:0;box-sizing:border-box;flex-direction:column;align-items:flex-start;align-self:stretch;text-align:left;}
   .admin-page .admin-content,
   .admin-page .admin-content .admin-section-head,
   .admin-page .admin-content .admin-list-toolbar,
