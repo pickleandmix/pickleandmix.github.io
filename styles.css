@@ -2168,4 +2168,4 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .club-detail-avatar.club-default-avatar.official{color:#713b25;background:linear-gradient(145deg,#fff0df,#ffd4aa)}
 .club-detail-avatar.club-default-avatar svg{display:block;width:100%;height:100%}
 .profile-club-avatar>svg{display:block;width:100%;height:100%;padding:4px;color:#12325e;background:linear-gradient(145deg,#e8f2ff,#cfe2ff)}
-.profile-club-row:has(.profile-club-type.official) .profile-club-avatar>svg{color:#713b25;background:linear-gradient(145deg,#fff0df,#ffd4aa)}
+.profile-club-avatar.official>svg{color:#713b25;background:linear-gradient(145deg,#fff0df,#ffd4aa)}
