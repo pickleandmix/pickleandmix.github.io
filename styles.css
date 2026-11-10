@@ -673,7 +673,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 
 /* Rankings de minijuegos */
 .ov-actions{display:flex;align-items:center;gap:8px}
-.mini-lb{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(5,13,27,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.mini-lb{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(5,13,27,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .mini-lb-card{width:min(100%,520px);max-height:88%;overflow:auto;background:#f7f9fc;color:#10243d;border-radius:22px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.35)}
 .mini-lb-card header{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .mini-lb-card header small{font-size:10px;letter-spacing:1.4px;font-weight:900;color:#6a7890}
