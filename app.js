@@ -1599,7 +1599,7 @@ document.addEventListener('click',e=>{
   if(t.hasAttribute('data-club-directory')){CL.directoryGroup=['official','friends','managed','member'].includes(d.clubDirectory)?d.clubDirectory:'friends';CL.section=['managed','member'].includes(CL.directoryGroup)?'mine':'explore';paintClubs();requestAnimationFrame(()=>window.scrollTo(0,0));return}
   if(t.hasAttribute('data-club-directory-back')){CL.directoryGroup=null;paintClubs();requestAnimationFrame(()=>window.scrollTo(0,0));return}
   if(t.hasAttribute('data-club-tab')){CL.tab=['info','events','posts','members','manage'].includes(d.clubTab)?d.clubTab:'info';CL.openPostId=null;CL.openEventId=null;paintClubs();return}
-  if(d.clubPostOpen){if(e.target.closest('button,a,input,textarea,select,form,label'))return;CL.openPostId=d.clubPostOpen;CL.openEventId=null;paintClubs();return}
+  if(d.clubPostOpen){if(e.target.closest('button,a,input,textarea,select,form,label')&&!t.hasAttribute('data-club-post-open'))return;CL.openPostId=d.clubPostOpen;CL.openEventId=null;paintClubs();return}
    if(t.hasAttribute('data-club-post-close')){if(e.target===t||t.classList.contains('club-post-modal-close')){CL.openPostId=null;CL.editingPostId=null;paintClubs()}return}
   if(d.clubEventOpen){CL.openEventId=d.clubEventOpen;paintClubs();return}
   if(t.hasAttribute('data-club-event-close')){if(e.target===t||t.classList.contains('club-event-modal-close')){CL.openEventId=null;paintClubs()}return}
