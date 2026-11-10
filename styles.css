@@ -2169,3 +2169,6 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .club-detail-avatar.club-default-avatar svg{display:block;width:100%;height:100%}
 .profile-club-avatar>svg{display:block;width:100%;height:100%;padding:4px;color:#12325e;background:linear-gradient(145deg,#e8f2ff,#cfe2ff)}
 .profile-club-avatar.official>svg{color:#713b25;background:linear-gradient(145deg,#fff0df,#ffd4aa)}
+
+/* Acceso a Instagram en Ayuda y Acerca de */
+.settings-instagram-card{display:flex;align-items:center;gap:12px;margin-top:14px;padding:15px}.settings-instagram-icon{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,#fff0e8,#f8d9eb);color:#b33c78}.settings-instagram-icon svg{width:23px;height:23px}.settings-instagram-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}.settings-instagram-copy b{font-size:14px}.settings-instagram-copy small{font-size:11px;color:var(--muted,#718096)}.settings-instagram-card>a{font-size:12px;font-weight:800;color:var(--blue,#245b9b);text-decoration:none;white-space:nowrap}.settings-instagram-card>a span{font-size:14px}
