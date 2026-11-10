@@ -1109,7 +1109,7 @@ function maybeShowPushWelcomePrompt(user){
  if(!Number.isFinite(age)||age<0||age>5*60*1000)return;
  const key='pm_push_welcome_seen:'+user.id;
  try{if(localStorage.getItem(key))return}catch(e){}
- if(PUSH_WELCOME_PROMPTED.has(user.id)||('Notification'in window&&Notification.permission==='granted'))return;
+ if(PUSH_WELCOME_PROMPTED.has(user.id))return;
  PUSH_WELCOME_PROMPTED.add(user.id);
  setTimeout(()=>{
   if(!AU.user||AU.user.id!==user.id||document.getElementById('push-welcome-modal'))return;
