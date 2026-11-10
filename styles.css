@@ -2149,11 +2149,3 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .profile-public-hero .profile-public-actions{min-width:0}
 @media(max-width:520px){.profile-public-hero .profile-avatar-large>.av{width:68px;height:68px;font-size:27px}.profile-public-hero .profile-hero-main{gap:12px}.profile-public-hero .profile-hero-copy>b{font-size:19px}.profile-public-hero .profile-hero-actions{gap:8px;flex-wrap:wrap}.profile-public-hero .profile-public-actions{justify-content:flex-start}}
 
-
-/* Clubes: garantizar que la zona de gestión reciba clics y foco */
-.club-detail-page[data-club-tab="manage"] .club-admin-zone{position:relative;z-index:6;pointer-events:auto}
-.club-detail-page[data-club-tab="manage"] .club-admin-zone *{pointer-events:auto}
-.club-detail-page[data-club-tab="manage"] .club-admin-form input,
-.club-detail-page[data-club-tab="manage"] .club-admin-form textarea,
-.club-detail-page[data-club-tab="manage"] .club-admin-form select,
-.club-detail-page[data-club-tab="manage"] .club-admin-form button{position:relative;z-index:1;pointer-events:auto;touch-action:manipulation}
