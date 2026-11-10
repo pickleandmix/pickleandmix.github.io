@@ -1,5 +1,5 @@
 /* Pickle&Mix PRODUCCIÓN · app-shell cache. Supabase data always remains network-only. */
-const CACHE_NAME = 'pickle-mix-shell-v10';
+const CACHE_NAME = 'pickle-mix-shell-v11';
 const APP_SHELL = [
   './',
   './index.html',
@@ -75,8 +75,8 @@ self.addEventListener('push', event => {
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
   event.waitUntil(self.registration.showNotification(data.title || 'Pickle&Mix', {
     body: data.body || 'Tienes una novedad en Pickle&Mix.',
-    icon: './icons/pickle-mix-192.jpg',
-    badge: './icons/pickle-mix-192.jpg',
+    icon: './icons/logo-pickleandmix-transparent.svg',
+    badge: './icons/logo-pickleandmix-transparent.svg',
     tag: data.tag || 'pickle-mix-notification',
     data: { url: data.url || './' },
     renotify: false
