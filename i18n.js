@@ -28,6 +28,8 @@ const ES_EN={
 "Ayuda y contacto":"Help & contact",
 "Sugerencias, consultas y errores":"Suggestions, questions and issues",
 "Acerca de Pickle&Mix":"About Pickle&Mix",
+"Síguenos en Instagram":"Follow us on Instagram",
+"Instagram oficial de Pickle&Mix":"Official Pickle&Mix Instagram",
 "Tu privacidad":"Your privacy",
 "Decide quién puede consultar la información de tu perfil.":"Choose who can view your profile information.",
 "Controla quién puede ver tus resultados y rendimiento.":"Choose who can see your results and performance.",
