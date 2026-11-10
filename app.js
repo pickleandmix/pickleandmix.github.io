@@ -1098,6 +1098,36 @@ async function saveNotificationPreference(key,value){
  }
 }
 
+
+let PUSH_WELCOME_PROMPTED=new Set();
+function closePushWelcomePrompt(){
+ const modal=document.getElementById('push-welcome-modal');if(modal)modal.remove();
+}
+function maybeShowPushWelcomePrompt(user){
+ if(!user||!user.id||!user.created_at)return;
+ const age=Date.now()-new Date(user.created_at).getTime();
+ if(!Number.isFinite(age)||age<0||age>5*60*1000)return;
+ const key='pm_push_welcome_seen:'+user.id;
+ try{if(localStorage.getItem(key))return}catch(e){}
+ if(PUSH_WELCOME_PROMPTED.has(user.id)||('Notification'in window&&Notification.permission==='granted'))return;
+ PUSH_WELCOME_PROMPTED.add(user.id);
+ setTimeout(()=>{
+  if(!AU.user||AU.user.id!==user.id||document.getElementById('push-welcome-modal'))return;
+  const modal=document.createElement('div');modal.id='push-welcome-modal';modal.className='push-welcome-overlay';
+  modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','push-welcome-title');
+  modal.innerHTML='<section class="push-welcome-card"><div class="push-welcome-icon" aria-hidden="true">♧</div><h2 id="push-welcome-title">¡No te pierdas nada de Pickle&Mix!</h2><p>Activa las notificaciones para estar al día de lo que sucede en tu comunidad.</p><ul><li>Solicitudes de amistad y novedades.</li><li>Eventos y actividad de tus clubes.</li><li>Logros y avisos importantes.</li></ul><button type="button" class="btn push-welcome-accept">Activar notificaciones</button><button type="button" class="btn ghost push-welcome-later">Ahora no</button><small>Puedes cambiar esta opción más adelante en Configuración.</small></section>';
+  document.body.appendChild(modal);
+  const dismiss=()=>{try{localStorage.setItem(key,'1')}catch(e){}closePushWelcomePrompt()};
+  modal.querySelector('.push-welcome-later').addEventListener('click',dismiss);
+  modal.addEventListener('click',e=>{if(e.target===modal)dismiss()});
+  modal.querySelector('.push-welcome-accept').addEventListener('click',async e=>{
+   const button=e.currentTarget;button.disabled=true;button.textContent='Activando…';
+   const ok=await setPushEnabled(true);
+   if(ok)dismiss();else{button.disabled=false;button.textContent='Volver a intentarlo'}
+  });
+ },1800);
+}
+
 const PUSH_VAPID_PUBLIC_KEY='BA0ugLtufmV4ZUsDkFf7xcdx55cwcfCumQTO4H3IY28QmXG5Dr2hSaUhR_zvT9FhlOtLgxXLBGxzu83O1L1PhLY';
 function pushBase64ToBytes(value){const pad='='.repeat((4-value.length%4)%4);const raw=atob((value+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(raw,c=>c.charCodeAt(0))}
 async function setPushEnabled(enabled){
@@ -1125,10 +1155,12 @@ async function setPushEnabled(enabled){
    await subscription.unsubscribe();
   }
   await saveNotificationPreference('push_enabled',!!enabled);
+  return true;
  }catch(error){
   NOTIF_PREFS.push_enabled=!enabled;render();
   toast(error&&error.message?error.message:'No se ha podido actualizar la configuración push.');
   console.warn('[push] setup:',error&&error.message);
+  return false;
  }
 }
 
@@ -1910,7 +1942,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined'){
       if(ch||ev==='INITIAL_SESSION'||ev==='USER_UPDATED'){if(view==='home'||view==='setup')render();else paintAuth();if(view==='settings'&&SETTINGS_TAB==='notifications')loadNotificationPreferences();if(view==='settings'&&SETTINGS_TAB==='help'&&u&&!SUPPORT.loaded)setTimeout(loadMySupport,0);setTimeout(checkAdminAccess,0)}
       if(u&&(ch||ev==='INITIAL_SESSION')){watchFriendships(u.id);watchProfileNotifications(u.id)}
       if(u&&(ch||ev==='INITIAL_SESSION'||ev==='USER_UPDATED'))setTimeout(()=>{loadProfile(u.id);loadMyHistory();loadFriends();loadMyAchievements();const supportTicket=new URLSearchParams(location.search).get('support_ticket');if(supportTicket)openSupportReplyNotification(supportTicket,true);if(view==='clubs'||view==='club-detail')loadClubs();if(view==='activity'){ACT.loaded=false;loadActivity(true)}if(view==='user-profile'&&PUB.id)openUserProfile(PUB.id);redeemClubInviteFromUrl()},0);
-      if(u&&ch&&AU.oauth&&ev==='SIGNED_IN'){AU.oauth=false;toast('Sesión iniciada como '+auName(u))}});
+      if(u&&ch&&ev==='SIGNED_IN'){maybeShowPushWelcomePrompt(u);if(AU.oauth){AU.oauth=false;toast('Sesión iniciada como '+auName(u))}}});
     setTimeout(()=>{if(!AU.ready){AU.ready=true;paintAuth();if(view==='settings'&&SETTINGS_TAB==='notifications')loadNotificationPreferences()}},4000)}
   catch(e){sbc=null;console.warn('[auth] onAuthStateChange:',e&&e.message)}}
   addEventListener('pageshow',e=>{if(e.persisted&&AU.busy){AU.busy=false;paintAuth()}});
