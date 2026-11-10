@@ -16,15 +16,9 @@
   "theme_color": "#12325e",
   "icons": [
     {
-      "src": "./icons/logo-pickleandmix.svg?v=1",
+      "src": "./icons/logo-pickleandmix-transparent.svg?v=1",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "./icons/pickle-mix-192.jpg?v=1",
-      "sizes": "192x192",
-      "type": "image/jpeg",
       "purpose": "any"
     }
   ]
