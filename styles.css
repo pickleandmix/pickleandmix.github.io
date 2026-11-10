@@ -1450,6 +1450,12 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
   .admin-page .admin-content{width:100%;min-width:0;margin:0;padding:13px;}
   .admin-page .admin-section-head,.admin-page .admin-list-toolbar,.admin-page .admin-subpanel,.admin-page .admin-activity-filters,.admin-page .admin-empty-state{max-width:100%;min-width:0;margin-left:0;margin-right:0;}
   .admin-page .admin-nav-btn{justify-content:center;min-height:38px;padding:8px 9px;font-size:11px}
+  /* En móvil, las filas deben ocupar todo el ancho interior de su tarjeta.
+     Evita que el contenido flex se mida por su ancho intrínseco y quede desplazado. */
+  .admin-page .admin-row{width:100%;box-sizing:border-box;align-items:stretch;}
+  .admin-page .admin-row-main{width:100%;max-width:100%;min-width:0;flex:0 1 auto;box-sizing:border-box;margin:0;padding:0;}
+  .admin-page .admin-row-main>div{width:100%;max-width:100%;min-width:0;box-sizing:border-box;}
+  .admin-page .admin-row-actions{width:100%;max-width:100%;box-sizing:border-box;padding-left:0;}
   .admin-page .admin-row-actions .btn{min-height:35px;padding:8px 10px}
   .admin-page .admin-filter-btn{min-height:33px;padding:7px 10px}
 }
