@@ -1673,6 +1673,7 @@ document.addEventListener('click',e=>{
   if(t.hasAttribute('data-feed-more')){loadActivity(false);return}
   if(d.a==='friends'){view='friends';FR.error='';render();loadFriends();return}
   if(d.a==='profile'){view='profile';AU.profileSettingsOpen=false;render();if(AU.user){loadMyHistory();loadFriends()}return}
+  if(d.a==='settings'){SETTINGS_TAB='main';view='settings';render();return}
   if(d.a==='clubs'){view='clubs';CL.error='';CL.selectedId=null;CL.directoryGroup=null;render();loadClubs();return}
   if(t.hasAttribute('data-profile-club-tab')){PUB.clubTab=d.profileClubTab==='managed'?'managed':'member';PUB.clubsExpanded=false;render();return}
   if(t.hasAttribute('data-profile-club-more')){PUB.clubsExpanded=true;render();return}
