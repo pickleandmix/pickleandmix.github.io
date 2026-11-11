@@ -2214,3 +2214,8 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .push-welcome-card li:before{content:'✓';position:absolute;left:2px;top:0;color:#6c991e;font-weight:900}
 .push-welcome-card .push-welcome-accept,.push-welcome-card .push-welcome-later{width:100%;min-height:46px;margin-top:8px}
 .push-welcome-card>small{display:block;margin-top:13px;color:var(--muted,#718096);font-size:10px;line-height:1.4}
+
+/* Zona de eliminación irreversible de la cuenta */
+.settings-delete-account{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-top:8px;padding-top:15px;border-top:1px solid #e6ebf2}
+.settings-delete-account p{margin:0;color:var(--mut);font-size:12px;line-height:1.5}
+.settings-delete-account .btn{margin:0}
