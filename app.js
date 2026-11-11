@@ -1177,11 +1177,6 @@ async function deleteOwnAccount(button){
   ?'FINAL WARNING\n\nYour account and all the data described above will be permanently erased. There is no recovery option. Are you absolutely sure?'
   :'ÚLTIMO AVISO\n\nTu cuenta y todos los datos indicados se borrarán para siempre. No existe opción de recuperación. ¿Estás completamente seguro?';
  if(!confirm(second))return;
- const phrase=prompt(en?'To confirm, type exactly: DELETE MY ACCOUNT':'Para confirmar, escribe exactamente: ELIMINAR MI CUENTA');
- if(phrase!==(en?'DELETE MY ACCOUNT':'ELIMINAR MI CUENTA')){
-  if(phrase!==null)toast(en?'The confirmation text does not match.':'El texto de confirmación no coincide.');
-  return;
- }
  if(!sbc||!AU.user){toast(en?'You need to be signed in.':'Debes iniciar sesión.');return}
  const original=button&&button.textContent;
  if(button){button.disabled=true;button.textContent=en?'Deleting account…':'Eliminando cuenta…'}
