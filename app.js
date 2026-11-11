@@ -2001,7 +2001,7 @@ if(typeof window!=='undefined'&&typeof document!=='undefined'){
       if(ch||ev==='INITIAL_SESSION'||ev==='USER_UPDATED'){if(view==='home'||view==='setup')render();else paintAuth();if(view==='settings'&&SETTINGS_TAB==='notifications')loadNotificationPreferences();if(view==='settings'&&SETTINGS_TAB==='help'&&u&&!SUPPORT.loaded)setTimeout(loadMySupport,0);setTimeout(checkAdminAccess,0)}
       if(u&&(ch||ev==='INITIAL_SESSION')){watchFriendships(u.id);watchProfileNotifications(u.id)}
       if(u&&(ch||ev==='INITIAL_SESSION'||ev==='USER_UPDATED'))setTimeout(()=>{loadProfile(u.id);loadMyHistory();loadFriends();loadMyAchievements();const supportTicket=new URLSearchParams(location.search).get('support_ticket');if(supportTicket)openSupportReplyNotification(supportTicket,true);if(view==='clubs'||view==='club-detail')loadClubs();if(view==='activity'){ACT.loaded=false;loadActivity(true)}if(view==='user-profile'&&PUB.id)openUserProfile(PUB.id);redeemClubInviteFromUrl()},0);
-      if(u&&ch&&ev==='SIGNED_IN'){maybeShowPushWelcomePrompt(u);if(AU.oauth){AU.oauth=false;toast('Sesión iniciada como '+auName(u))}}});
+      if(u&&ch&&(ev==='SIGNED_IN'||ev==='INITIAL_SESSION')){maybeShowPushWelcomePrompt(u);if(ev==='SIGNED_IN'&&AU.oauth){AU.oauth=false;toast('Sesión iniciada como '+auName(u))}}});
     setTimeout(()=>{if(!AU.ready){AU.ready=true;paintAuth();if(view==='settings'&&SETTINGS_TAB==='notifications')loadNotificationPreferences()}},4000)}
   catch(e){sbc=null;console.warn('[auth] onAuthStateChange:',e&&e.message)}}
   addEventListener('pageshow',e=>{if(e.persisted&&AU.busy){AU.busy=false;paintAuth()}});
