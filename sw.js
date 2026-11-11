@@ -3,9 +3,9 @@ const CACHE_NAME = 'pickle-mix-shell-v19';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=123',
+  './styles.css?v=124',
   './i18n.js?v=1',
-  './app.js?v=213',
+  './app.js?v=214',
   './manifest.webmanifest',
   './favicon.svg',
   './icons/logo-pickleandmix.svg',
