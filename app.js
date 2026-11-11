@@ -1147,8 +1147,9 @@ async function setPushEnabled(enabled){
    if(!subscription)subscription=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushBase64ToBytes(PUSH_VAPID_PUBLIC_KEY)});
    const data=subscription.toJSON(),keys=data.keys||{};
    if(!data.endpoint||!keys.p256dh||!keys.auth)throw new Error('No se ha podido registrar este dispositivo.');
-   const {error}=await sbc.from('push_subscriptions').upsert({user_id:AU.user.id,endpoint:data.endpoint,p256dh:keys.p256dh,auth:keys.auth,user_agent:navigator.userAgent,updated_at:new Date().toISOString()},{onConflict:'endpoint'});
-   if(error)throw error;
+   const {data:registered,error:registerError}=await sbc.functions.invoke('register-push-subscription',{body:{endpoint:data.endpoint,p256dh:keys.p256dh,auth:keys.auth,user_agent:navigator.userAgent}});
+   if(registerError){let message=registerError.message||'No se ha podido registrar este dispositivo.';try{const detail=await registerError.context.json();if(detail&&detail.error)message=detail.error}catch(_){}throw new Error(message)}
+   if(!registered||!registered.success)throw new Error(registered&&registered.error?registered.error:'No se ha podido registrar este dispositivo.');
   }else if(subscription){
    const endpoint=subscription.endpoint;
    const {error}=await sbc.from('push_subscriptions').delete().eq('endpoint',endpoint);
