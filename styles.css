@@ -2219,3 +2219,20 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .settings-delete-account{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-top:8px;padding-top:15px;border-top:1px solid #e6ebf2}
 .settings-delete-account p{margin:0;color:var(--mut);font-size:12px;line-height:1.5}
 .settings-delete-account .btn{margin:0}
+
+
+/* Moderación de contenido y denuncias */
+.club-content-report{border:0;background:transparent;color:var(--muted,#64748b);font:inherit;font-size:.78rem;font-weight:650;padding:5px 7px;border-radius:8px;cursor:pointer}
+.club-content-report:hover{background:rgba(220,38,38,.08);color:#b42318}
+.club-post-preview-footer{flex-wrap:wrap}
+.club-comment-meta-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.admin-report-card{border:1px solid var(--line,#e5e7eb);border-radius:16px;padding:16px;margin:12px 0;background:var(--surface,#fff);min-width:0}
+.admin-report-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.admin-report-head>div{display:flex;gap:6px;flex-wrap:wrap}
+.admin-report-head time{font-size:.76rem;color:var(--muted,#64748b)}
+.admin-report-card h4{margin:12px 0 6px;font-size:1rem}
+.admin-report-content{margin:0 0 12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text,#1f2937);line-height:1.5}
+.admin-report-meta{display:grid;gap:5px;padding:11px 12px;border-radius:10px;background:var(--surface-2,#f6f7f9);font-size:.82rem;color:var(--muted,#64748b);overflow-wrap:anywhere}
+.admin-report-meta b{color:var(--text,#1f2937)}
+.admin-report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:560px){.admin-report-card{padding:13px}.admin-report-actions .btn{flex:1 1 100%}.club-content-report{padding:5px 4px}}
