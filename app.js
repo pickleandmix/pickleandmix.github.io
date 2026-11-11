@@ -1185,7 +1185,7 @@ async function deleteOwnAccount(button){
  const original=button&&button.textContent;
  if(button){button.disabled=true;button.textContent=en?'Deleting account…':'Eliminando cuenta…'}
  try{
-  const {data,error}=await sbc.functions.invoke('delete-account',{body:{confirmation:'ELIMINAR MI CUENTA'}});
+  const {data,error}=await sbc.functions.invoke('delete-account',{body:{confirmation:en?'DELETE MY ACCOUNT':'ELIMINAR MI CUENTA'}});
   if(error){
    let message=error.message||'No se pudo eliminar la cuenta.';
    try{const detail=await error.context.json();if(detail&&detail.error)message=detail.error}catch(_){}
