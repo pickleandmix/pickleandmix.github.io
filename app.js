@@ -1663,6 +1663,18 @@ document.addEventListener('click',e=>{
   else if(type==='club_join_request_received')openClubJoinRequestNotification(id);
   else openClubNotification(type,id);
 },true);
+// Acceso prioritario al engranaje del perfil: evita que otros manejadores de clic interfieran.
+document.addEventListener('click',e=>{
+  const target=e.target instanceof Element?e.target:null;
+  const gear=target&&target.closest('.profile-settings-icon[data-a="settings"]');
+  if(!gear)return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  SETTINGS_TAB='main';
+  view='settings';
+  try{render()}catch(error){console.error('[settings] No se pudo abrir Configuración:',error);toast('No se ha podido abrir Configuración. Recarga la aplicación.')}
+},true);
+
 document.addEventListener('click',e=>{
   // Dejar que el navegador active el input file asociado a los controles de imagen del club.
   if(e.target.closest('label.club-avatar-edit,label.club-image-edit,[data-club-image-file]'))return;
