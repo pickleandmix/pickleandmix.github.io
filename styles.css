@@ -2236,3 +2236,28 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .admin-report-meta b{color:var(--text,#1f2937)}
 .admin-report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 @media(max-width:560px){.admin-report-card{padding:13px}.admin-report-actions .btn{flex:1 1 100%}.club-content-report{padding:5px 4px}}
+
+
+/* Jerarquía cromática del panel de administración: acentos suaves */
+.admin-nav-group{border-top:3px solid #cbd5e1}
+.admin-nav-group-summary{border-top-color:#8b78d6}
+.admin-nav-group-community{border-top-color:#4f8fd0}
+.admin-nav-group-control{border-top-color:#8a96a7}
+.admin-nav-group-summary>span{color:#7562bd}
+.admin-nav-group-community>span{color:#3977b7}
+.admin-nav-group-control>span{color:#64748b}
+.admin-nav-btn[data-admin-category="stats"]{--admin-item:#8067c9;--admin-item-bg:#f3efff}
+.admin-nav-btn[data-admin-category="community"]{--admin-item:#347fbd;--admin-item-bg:#edf5fc}
+.admin-nav-btn[data-admin-category="moderation"]{--admin-item:#39865d;--admin-item-bg:#edf7f0}
+.admin-nav-btn[data-admin-category="support"]{--admin-item:#c27a2b;--admin-item-bg:#fff5e8}
+.admin-nav-btn[data-admin-category="administration"]{--admin-item:#b64f4a;--admin-item-bg:#fff0ef}
+.admin-nav-btn[data-admin-category]:hover{background:var(--admin-item-bg);color:var(--admin-item)}
+.admin-nav-btn[data-admin-category][aria-current="page"]{border-color:color-mix(in srgb,var(--admin-item) 30%,white);background:var(--admin-item-bg);color:var(--admin-item);box-shadow:inset 3px 0 0 var(--admin-item),0 1px 3px rgba(20,45,75,.05)}
+.admin-nav-btn[data-admin-category][aria-current="page"] i{background:var(--admin-item)}
+.admin-nav-badge{background:#c28a22}
+.admin-page[data-admin-category="stats"] .admin-section-head h3{color:#7562bd}
+.admin-page[data-admin-category="community"] .admin-section-head h3{color:#3977b7}
+.admin-page[data-admin-category="moderation"] .admin-section-head h3{color:#39865d}
+.admin-page[data-admin-category="support"] .admin-section-head h3{color:#b36d22}
+.admin-page[data-admin-category="administration"] .admin-section-head h3{color:#ad4944}
+@media(max-width:680px){.admin-nav{grid-template-columns:1fr}}
