@@ -2261,3 +2261,6 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:left;
 .admin-page[data-admin-category="support"] .admin-section-head h3{color:#b36d22}
 .admin-page[data-admin-category="administration"] .admin-section-head h3{color:#ad4944}
 @media(max-width:680px){.admin-nav{grid-template-columns:1fr}}
+
+/* Analítica de visitas web en el Superadministrador */
+.admin-website-visits{margin:12px 0}.admin-visit-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.admin-visit-kpis .admin-kpi{padding:10px}.admin-visit-kpis .admin-kpi>b{font-size:22px}.admin-visits-chart-title{margin-top:18px}.admin-visit-note{margin:8px 0 0;color:#8793a2;font-size:9px;line-height:1.4}@media(max-width:520px){.admin-visit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
