@@ -395,7 +395,7 @@ function initPong(cid,hid,pre){
     c.addEventListener('pointerdown',e=>{const[px,py]=ptr(e);if((s.m==='idle'||s.m==='over')&&Math.hypot(px-s.bx,py-s.by)<s.r+24*k){if(s.m==='over')PG.u=PG.c=0;start(-1)}})}
   function start(dir){s.m='play';s.sp=300;const n=Math.random()-.5,v=s.sp*V();s.vx=n*v;s.vy=dir*Math.sqrt(v*v-s.vx*s.vx);s.err=0;say('Mueve tu pala (la de abajo) con el dedo o el ratón')}
   function point(u){u?PG.u++:PG.c++;
-    if(PG.u>=WIN||PG.c>=WIN){s.m='over';idle();s.vx=s.vy=0;saveMiniGameScore('pong',PG.u);say(PG.u>PG.c?`¡Ganaste ${PG.u}-${PG.c}! Toca la pelota para jugar otra vez`:`Gana el ordenador ${PG.c}-${PG.u}. Toca la pelota para la revancha`);return}
+    if(PG.u>=WIN||PG.c>=WIN){s.m='over';idle();s.vx=s.vy=0;trackMiniGameEvent('pong','completed');saveMiniGameScore('pong',PG.u);say(PG.u>PG.c?`¡Ganaste ${PG.u}-${PG.c}! Toca la pelota para jugar otra vez`:`Gana el ordenador ${PG.c}-${PG.u}. Toca la pelota para la revancha`);return}
     s.m='wait';s.t=.8;s.bx=W/2;s.by=H/2;s.vx=s.vy=0;s.dir=u?-1:1}
   function step(dt){
     s.a+=dt*(s.m==='play'?4:.3);
@@ -1559,6 +1559,17 @@ function miniGamePlayerName(){
   const p=AU.profile||{},alias=String(p.alias||'').trim();
   return (alias?'@'+alias:String(p.display_name||AU.user?.user_metadata?.full_name||AU.user?.email?.split('@')[0]||'Jugador')).slice(0,40);
 }
+async function trackMiniGameEvent(game,event){
+  if(!['pong','pairs','kitchen','dink'].includes(game)||!['started','completed'].includes(event))return;
+  try{
+    let token='';
+    if(sbc){const {data}=await sbc.auth.getSession();token=data?.session?.access_token||''}
+    const headers={'Content-Type':'application/json'};
+    if(token)headers.Authorization='Bearer '+token;
+    const response=await fetch('https://bcjfwxcknykurnfcispi.supabase.co/functions/v1/track-minigame-event',{method:'POST',headers,body:JSON.stringify({game,event}),keepalive:true,mode:'cors'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+  }catch(error){console.warn('[minigames] analytics:',error&&error.message)}
+}
 async function saveMiniGameScore(game,rawScore){
   if(!AU.user||!sbc){toast('Inicia sesión para guardar tu puntuación en el ranking.');return}
   const score=Math.floor(Number(rawScore));
@@ -1593,15 +1604,15 @@ function openGame(id){if((id==='kitchen'||id==='dink')&&!AU.user){toast('Este mi
   o.innerHTML=`<div class="ovh"><span>${GN[id]}</span><div class="ov-actions">${id==='pairs'?'':'<button class=\"btn sm\" data-lb>Top 10</button>'}<button class="btn sm red" data-a="closeg">Cerrar ✕</button></div></div><iframe title="${GN[id]}" allow="autoplay"></iframe>`;
   const f=o.querySelector('iframe');
   f.addEventListener('load',()=>{try{const w=f.contentWindow;w.addEventListener('keydown',e=>{if(e.key==='Escape')A.closeg()});if(window.observeTranslationRoot)window.observeTranslationRoot(f.contentDocument.body);if(window.translateDOM)window.translateDOM(f.contentDocument.body);w.focus()}catch(e){}});
-  const onMessage=e=>{if(e.source!==f.contentWindow||!e.data||e.data.type!=='pm-minigame-score'||e.data.game!==id)return;saveMiniGameScore(id,e.data.score)};
+  const onMessage=e=>{if(e.source!==f.contentWindow||!e.data||e.data.game!==id)return;if(e.data.type==='pm-minigame-score'){trackMiniGameEvent(id,'completed');saveMiniGameScore(id,e.data.score)}else if(e.data.type==='pm-minigame-complete'){trackMiniGameEvent(id,'completed')}};
   window.addEventListener('message',onMessage);o._miniMessageHandler=onMessage;
   const lbButton=o.querySelector('[data-lb]');if(lbButton)lbButton.addEventListener('click',()=>showMiniGameLeaderboard(id));
   let gameSource=src.textContent.split('<\\/script>').join('</script>');if(APP_LANG==='en'&&window.translateTextValue){const bridge='<script>(function(){const tr=window.parent.translateTextValue;const p=CanvasRenderingContext2D.prototype,original=p.fillText;p.fillText=function(value){const args=Array.prototype.slice.call(arguments);args[0]=typeof value===\'string\'?tr(value):value;return original.apply(this,args)}})();<\\/script>';gameSource=gameSource.replace(/<script\\b/i,bridge+'<script')}f.srcdoc=gameSource;
-  document.body.appendChild(o);document.body.style.overflow='hidden'}
+  document.body.appendChild(o);document.body.style.overflow='hidden';trackMiniGameEvent(id,'started')}
 const A={
   play(){if($('#ov'))return;const o=document.createElement('div');o.id='ov';o.dataset.game='pong';o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
     o.innerHTML='<div class="ovh"><span>Pong de PICKLE&amp;MIX</span><div class="ov-actions"><button class="btn sm" data-lb>Top 10</button><button class="btn sm red" data-a="closeg">Cerrar ✕</button></div></div><canvas id="pong2"></canvas><p id="phint2"></p>';
-    document.body.appendChild(o);o.querySelector('[data-lb]').addEventListener('click',()=>showMiniGameLeaderboard('pong'));document.body.style.overflow='hidden';initPong('pong2','phint2')},
+    document.body.appendChild(o);o.querySelector('[data-lb]').addEventListener('click',()=>showMiniGameLeaderboard('pong'));document.body.style.overflow='hidden';trackMiniGameEvent('pong','started');initPong('pong2','phint2')},
   closeg(){const lb=$('#miniLb');if(lb)lb.remove();const o=$('#ov');if(o){if(o._miniMessageHandler)window.removeEventListener('message',o._miniMessageHandler);o.remove()}document.body.style.overflow=''},
   kitchen(){openGame('kitchen')},dink(){openGame('dink')},pairs(){openGame('pairs')},
   /* Cuenta (Supabase · Google) */
