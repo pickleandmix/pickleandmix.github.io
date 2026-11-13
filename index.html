@@ -557,7 +557,7 @@ function aiPlay(g){if(g!==gen||G.fin)return;const [,u]=AIp(),free=G.deck.map((_,
  setTimeout(()=>{if(g!==gen||G.fin)return;const icon=G.deck[f],rest=free.filter(i=>i!==f);let s=rest.find(i=>G.mem[i]===icon&&i in G.mem);
   if(!(s!=null&&Math.random()<u)){const unk=rest.filter(i=>!(i in G.mem));s=pick(unk.length?unk:rest)}flip(s)},800)}
 $('#board').addEventListener('click',e=>{const b=e.target.closest('.card');if(b&&!(G.ai&&G.cur===1))flip(+b.dataset.i)});
-function finish(g){if(g!==gen)return;G.fin=true;const m=Math.max(...G.sc),w=G.sc.map((s,i)=>s==m?i:-1).filter(i=>i>=0),ai=G.ai;
+function finish(g){if(g!==gen)return;G.fin=true;try{window.parent.postMessage({type:'pm-minigame-complete',game:'pairs'},'*')}catch(e){};const m=Math.max(...G.sc),w=G.sc.map((s,i)=>s==m?i:-1).filter(i=>i>=0),ai=G.ai;
  const title=w.length>1?'¡Empate!':ai?(w[0]==0?'¡Has ganado!':'Gana el PC'):'Gana Jugador '+(w[0]+1);
  const names=ai?['Tú','PC']:[1,2,3,4].map(i=>'Jugador '+i),rows=G.sc.map((s,i)=>[s,i]).sort((a,b)=>b[0]-a[0]||a[1]-b[1]);
  $('#res').innerHTML=`<div class="rb"><div class="tro">${ai&&w[0]==1&&w.length==1?'🥒':'🏆'}</div><h2>${title}</h2><ol>${rows.map(([s,i])=>`<li class="rw${s==m?' w':''}" style="--c:${PC[i].c}"><i></i>${names[i]}<b>${s}</b></li>`).join('')}</ol><p>${G.moves} movimientos · ${G.np} parejas</p><button class="btn" id="again">Revancha</button><button class="btn ghost" id="tomenu">Menú</button></div>`;
